@@ -33,6 +33,20 @@ define('WP_MCP_ULTIMATE_VERSION', '1.0.0');
 
 require_once __DIR__ . '/includes/Autoloader.php';
 
+register_activation_hook(__FILE__, function (): void {
+    // Set transient for admin redirect on first activation
+    set_transient('wp_mcp_ultimate_activated', true, 30);
+    // Flush rewrite rules for REST API routes
+    flush_rewrite_rules();
+});
+
+register_deactivation_hook(__FILE__, function (): void {
+    // Clean up transients
+    delete_transient('wp_mcp_ultimate_activated');
+    // Flush rewrite rules
+    flush_rewrite_rules();
+});
+
 if (Autoloader::register()) {
     Plugin::instance();
 }

@@ -41,6 +41,9 @@ final class Plugin {
 
         // Conflict detection
         add_action('admin_init', [$this, 'check_conflicts']);
+
+        // First-time activation redirect
+        add_action('admin_init', [$this, 'maybe_redirect_to_dashboard']);
     }
 
     public function check_conflicts(): void {
@@ -64,6 +67,18 @@ final class Plugin {
                 });
             }
         }
+    }
+
+    public function maybe_redirect_to_dashboard(): void {
+        if (!get_transient('wp_mcp_ultimate_activated')) {
+            return;
+        }
+        delete_transient('wp_mcp_ultimate_activated');
+        if (wp_doing_ajax() || isset($_GET['activate-multi'])) {
+            return;
+        }
+        wp_safe_redirect(admin_url('tools.php?page=wp-mcp-ultimate'));
+        exit;
     }
 
     public function __clone() {
