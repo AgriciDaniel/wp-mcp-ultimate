@@ -1,0 +1,200 @@
+/* WP MCP Ultimate — Admin Dashboard */
+
+.mcp-subtitle {
+    font-size: 14px;
+    color: #646970;
+    margin-top: -8px;
+    margin-bottom: 20px;
+}
+
+/* Card layout */
+.mcp-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.mcp-card h2 {
+    margin-top: 0;
+    padding-top: 0;
+    font-size: 16px;
+    border-bottom: 1px solid #f0f0f1;
+    padding-bottom: 10px;
+}
+
+.mcp-card h3 {
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+/* Health check grid */
+.mcp-health-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.mcp-health-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background: #f6f7f7;
+    border-radius: 4px;
+}
+
+.mcp-health-detail {
+    font-size: 13px;
+    color: #646970;
+}
+
+/* Status icons */
+.mcp-status-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: bold;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.mcp-status-ok {
+    background: #d4edda;
+    color: #00a32a;
+}
+
+.mcp-status-error {
+    background: #f8d7da;
+    color: #d63638;
+}
+
+/* Badge */
+.mcp-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.mcp-badge-active {
+    background: #d4edda;
+    color: #00a32a;
+}
+
+/* Key display */
+.mcp-key-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 10px;
+    background: #f6f7f7;
+    border-radius: 4px;
+}
+
+.mcp-key-display code {
+    flex: 1;
+    word-break: break-all;
+    font-size: 13px;
+}
+
+/* Config blocks */
+.mcp-config-block {
+    margin-bottom: 20px;
+}
+
+.mcp-config-block:last-child {
+    margin-bottom: 0;
+}
+
+.mcp-code-wrapper {
+    position: relative;
+}
+
+.mcp-code-wrapper pre {
+    background: #2c3338;
+    color: #e0e0e0;
+    padding: 16px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.mcp-code-wrapper code {
+    background: transparent;
+    color: inherit;
+    font-family: Consolas, Monaco, "Andale Mono", monospace;
+}
+
+.mcp-code-wrapper .mcp-copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+}
+
+.mcp-placeholder {
+    color: #f0c674;
+}
+
+/* Copy button */
+.mcp-copy-btn {
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.mcp-copy-btn.copied {
+    color: #00a32a;
+}
+
+/* Status row */
+.mcp-status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.mcp-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.mcp-dot-active {
+    background: #00a32a;
+}
+
+.mcp-dot-inactive {
+    background: #d63638;
+}
+
+.mcp-dot-unknown {
+    background: #dba617;
+}
+
+.mcp-ability-count {
+    font-size: 13px;
+    color: #646970;
+    margin: 0 0 12px;
+}
+
+/* Spinner override for buttons */
+.mcp-card .button .spinner {
+    float: none;
+    margin: 0 4px 0 0;
+    vertical-align: middle;
+}

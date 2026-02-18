@@ -5,6 +5,7 @@ namespace WpMcpUltimate;
 
 use WpMcpUltimate\Server\McpAdapter;
 use WpMcpUltimate\Abilities\Registry;
+use WpMcpUltimate\Admin\Ajax;
 use WpMcpUltimate\Admin\Dashboard;
 
 final class Plugin {
@@ -34,9 +35,14 @@ final class Plugin {
             McpAdapter::instance();
         }
 
-        // Admin dashboard
-        if (is_admin() && class_exists(Dashboard::class)) {
-            Dashboard::init();
+        // Admin dashboard and AJAX handlers
+        if (is_admin()) {
+            if (class_exists(Dashboard::class)) {
+                Dashboard::init();
+            }
+            if (class_exists(Ajax::class)) {
+                Ajax::init();
+            }
         }
 
         // Conflict detection
