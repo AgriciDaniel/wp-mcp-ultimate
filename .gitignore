@@ -1,0 +1,6 @@
+.upstream/
+vendor/
+node_modules/
+*.log
+.DS_Store
+build/

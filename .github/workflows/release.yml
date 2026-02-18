@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - name: Build release zip
+        run: |
+          mkdir -p build/wp-mcp-ultimate
+          rsync -av --exclude='.git' --exclude='.github' --exclude='.upstream' --exclude='docs/plans' --exclude='.gitignore' --exclude='build' . build/wp-mcp-ultimate/
+          cd build && zip -r ../wp-mcp-ultimate-${{ steps.version.outputs.version }}.zip wp-mcp-ultimate/
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: wp-mcp-ultimate-${{ steps.version.outputs.version }}.zip
+          generate_release_notes: true
