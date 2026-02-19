@@ -257,9 +257,20 @@ final class McpAdapter {
 			return;
 		}
 
-		// Register category before abilities
-		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_default_category' ) );
-		add_action( 'wp_abilities_api_init', array( $this, 'register_default_abilities' ) );
+		// Register default MCP category and abilities.
+		// If wp_abilities_api_init already fired (e.g. we're running on rest_api_init),
+		// call directly. Otherwise hook into the actions for when they fire later.
+		if ( did_action( 'wp_abilities_api_categories_init' ) ) {
+			$this->register_default_category();
+		} else {
+			add_action( 'wp_abilities_api_categories_init', array( $this, 'register_default_category' ) );
+		}
+
+		if ( did_action( 'wp_abilities_api_init' ) ) {
+			$this->register_default_abilities();
+		} else {
+			add_action( 'wp_abilities_api_init', array( $this, 'register_default_abilities' ) );
+		}
 
 		add_action( 'mcp_adapter_init', array( DefaultServerFactory::class, 'create' ) );
 	}

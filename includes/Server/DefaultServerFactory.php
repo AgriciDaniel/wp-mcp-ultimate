@@ -46,7 +46,7 @@ class DefaultServerFactory {
 			'server_route'           => 'wp-mcp-ultimate',
 			'server_name'            => 'WP MCP Ultimate',
 			'server_description'     => 'All-in-one MCP server for WordPress',
-			'server_version'         => 'v1.0.0',
+			'server_version'         => WP_MCP_ULTIMATE_VERSION,
 			'mcp_transports'         => array( HttpTransport::class ),
 			'error_handler'          => ErrorLogMcpErrorHandler::class,
 			'observability_handler'  => NullMcpObservabilityHandler::class,

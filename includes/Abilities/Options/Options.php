@@ -43,7 +43,7 @@ class Options {
 						return array( 'success' => false, 'name' => '', 'value' => null, 'type' => 'null' );
 					}
 
-					$name  = sanitize_key( $input['name'] );
+					$name  = sanitize_text_field( $input['name'] );
 					$value = get_option( $name, null );
 
 					if ( null === $value ) {
@@ -120,7 +120,7 @@ class Options {
 						return array( 'success' => false, 'name' => '', 'message' => esc_html__( 'Missing required parameter: name', 'wp-mcp-ultimate' ) );
 					}
 
-					$name = sanitize_key( $input['name'] );
+					$name = sanitize_text_field( $input['name'] );
 
 					// Protected options that cannot be modified via MCP for security.
 					$protected_options = array(

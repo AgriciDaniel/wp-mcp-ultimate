@@ -266,8 +266,15 @@ class Helpers {
         }
 
         if (empty($plugin_folder)) {
+            $found_items = [];
+            foreach ($files as $file => $info) {
+                $found_items[] = $file . ' (type: ' . $info['type'] . ')';
+            }
             if ($wp_filesystem) { $wp_filesystem->delete($temp_dir, true); }
-            return ['success' => false, 'message' => esc_html__('Invalid plugin zip - no plugin folder found', 'wp-mcp-ultimate')];
+            return [
+                'success' => false,
+                'message' => esc_html__('Invalid plugin zip - no plugin folder found. Found: ', 'wp-mcp-ultimate') . esc_html(implode(', ', $found_items)),
+            ];
         }
 
         $target_dir  = $plugins_dir . '/' . $plugin_folder;

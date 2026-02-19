@@ -1,0 +1,20 @@
+{
+  "name": "wp-mcp-ultimate",
+  "version": "1.0.0",
+  "description": "![PHP >= 8.0](https://img.shields.io/badge/PHP-%3E%3D%208.0-777BB4?logo=php&logoColor=white) ![WordPress >= 6.7](https://img.shields.io/badge/WordPress-%3E%3D%206.7-21759B?logo=wordpress&logoColor=white) ![License GPL-2.0-or-later](https://img.shields.io/badge/License-GPL--2.0--or--later-blue)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@wordpress/env": "^11.0.0"
+  }
+}

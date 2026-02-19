@@ -134,7 +134,7 @@ if (!class_exists('WP_Ability')) {
             $this->category            = (string) ($args['category'] ?? '');
             $this->input_schema        = (array) ($args['input_schema'] ?? []);
             $this->output_schema       = (array) ($args['output_schema'] ?? []);
-            $this->callback            = $args['callback'] ?? null;
+            $this->callback            = $args['execute_callback'] ?? $args['callback'] ?? null;
             $this->permission_callback = $args['permission_callback'] ?? null;
             $this->meta                = (array) ($args['meta'] ?? []);
         }
@@ -208,10 +208,12 @@ if (!class_exists('WP_Ability')) {
          * @param array $input Input data conforming to the input schema.
          * @return mixed The callback's return value.
          */
-        public function execute(array $input): mixed {
+        public function execute( $input = array() ): mixed {
             if (!is_callable($this->callback)) {
                 return null;
             }
+
+            $input = is_array( $input ) ? $input : array();
 
             return call_user_func($this->callback, $input);
         }
@@ -225,12 +227,14 @@ if (!class_exists('WP_Ability')) {
          * @param array $input Input data (forwarded to the permission callback).
          * @return bool
          */
-        public function check_permissions(array $input): bool {
+        public function check_permissions( $input = array() ) {
             if (null === $this->permission_callback) {
                 return true;
             }
 
-            return (bool) call_user_func($this->permission_callback, $input);
+            $input = is_array( $input ) ? $input : array();
+
+            return call_user_func($this->permission_callback, $input);
         }
     }
 }

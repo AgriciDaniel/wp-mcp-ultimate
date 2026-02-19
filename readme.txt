@@ -3,7 +3,7 @@ Contributors: agricidaniel
 Tags: mcp, ai, claude, model-context-protocol, automation
 Requires at least: 6.7
 Tested up to: 6.8
-Stable tag: 1.0.0
+Stable tag: 2.0.0
 Requires PHP: 8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
@@ -54,6 +54,13 @@ HTTPS is strongly recommended for production use since API credentials are trans
 Different abilities require different WordPress capabilities. For example, content abilities require `edit_posts`, user abilities require `list_users` or `edit_users`, and system abilities require `manage_options`. See the full abilities reference in docs/ABILITIES.md.
 
 == Changelog ==
+
+= 2.0.0 =
+* Merged best implementations from MCP Expose Abilities v3.0.17 (Bjorn Solstad) and WP MCP Ultimate v1.0.0
+* Fixed content/search total count always returning 0 (no_found_rows bug)
+* Fixed options/get and options/update mangling option names with uppercase letters
+* Improved plugin zip install error diagnostics (shows found items on failure)
+* Added returned count and has_more pagination to search results
 
 = 1.0.0 =
 * Initial release with 57 WordPress abilities
