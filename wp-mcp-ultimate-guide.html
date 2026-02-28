@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WP MCP Ultimate — Architecture Guide</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0c;
+      color: #e4e4e7;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+    .header {
+      padding: 2rem 3rem 1rem;
+      border-bottom: 1px solid #1a1a1e;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .header h1 span { color: #6366f1; }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .badge-green { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+    .badge-blue { background: #172554; color: #60a5fa; border: 1px solid #1e40af; }
+    .badge-amber { background: #1c1917; color: #fbbf24; border: 1px solid #78350f; }
+    .tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 3rem;
+      border-bottom: 1px solid #1a1a1e;
+    }
+    .tab {
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      color: #71717a;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab:hover { color: #a1a1aa; }
+    .tab.active { color: #e4e4e7; border-bottom-color: #6366f1; }
+    .content { padding: 2rem 3rem; }
+    .content.hidden { display: none; }
+
+    /* Diagram */
+    .diagram-container {
+      background: #08080a;
+      border: 1px solid #1a1a1e;
+      border-radius: 1rem;
+      padding: 2rem;
+      overflow-x: auto;
+    }
+    .mermaid { text-align: center; }
+
+    /* Cards */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+    .card {
+      background: #08080a;
+      border: 1px solid #1a1a1e;
+      border-radius: 1rem;
+      padding: 1.5rem;
+    }
+    .card h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .card h3 .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-indigo { background: #818cf8; }
+    .dot-green { background: #22c55e; }
+    .dot-amber { background: #f59e0b; }
+    .dot-red { background: #ef4444; }
+    .dot-cyan { background: #22d3ee; }
+    .dot-pink { background: #ec4899; }
+    .card ul { list-style: none; }
+    .card li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #1a1a1e;
+      font-size: 0.8125rem;
+      color: #a1a1aa;
+      line-height: 1.5;
+    }
+    .card li:last-child { border-bottom: none; }
+    .card li code {
+      background: #18181b;
+      padding: 0.125rem 0.375rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      color: #c084fc;
+    }
+    .highlight { color: #4ade80; font-weight: 500; }
+
+    /* Quick start */
+    .step-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+    .step-card {
+      background: #08080a;
+      border: 1px solid #1a1a1e;
+      border-radius: 1rem;
+      overflow: hidden;
+    }
+    .step-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #1a1a1e;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .step-num-1 { background: #1e1b4b; color: #818cf8; }
+    .step-num-2 { background: #052e16; color: #4ade80; }
+    .step-num-3 { background: #451a03; color: #fb923c; }
+    .step-num-4 { background: #172554; color: #60a5fa; }
+    .step-header h4 { font-size: 0.875rem; font-weight: 600; }
+    .step-body { padding: 1.25rem 1.5rem; }
+    .step-body p {
+      font-size: 0.8125rem;
+      color: #a1a1aa;
+      line-height: 1.6;
+      margin-bottom: 0.75rem;
+    }
+    .step-body p:last-child { margin-bottom: 0; }
+
+    /* Code blocks */
+    .code-block {
+      background: #0f0f12;
+      border: 1px solid #1a1a1e;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-size: 0.75rem;
+      color: #a1a1aa;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      overflow-x: auto;
+      margin-top: 0.5rem;
+    }
+    .json-key { color: #818cf8; }
+    .json-str { color: #4ade80; }
+    .json-bracket { color: #71717a; }
+    .json-bool { color: #f59e0b; }
+    .json-num { color: #60a5fa; }
+    .comment { color: #52525b; }
+
+    /* Table */
+    .ability-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      background: #08080a;
+      border: 1px solid #1a1a1e;
+      border-radius: 1rem;
+      overflow: hidden;
+    }
+    .ability-table th {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #52525b;
+      border-bottom: 1px solid #27272a;
+      background: #0f0f12;
+    }
+    .ability-table td {
+      padding: 0.5rem 1rem;
+      font-size: 0.8125rem;
+      color: #a1a1aa;
+      border-bottom: 1px solid #1a1a1e;
+      vertical-align: top;
+    }
+    .ability-table tr:last-child td { border-bottom: none; }
+    .ability-table td code {
+      background: #18181b;
+      padding: 0.125rem 0.375rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      color: #c084fc;
+    }
+    .cat-label {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.625rem;
+      font-weight: 600;
+    }
+    .cat-content { background: #1e1b4b; color: #818cf8; border: 1px solid #312e81; }
+    .cat-media { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+    .cat-users { background: #451a03; color: #fb923c; border: 1px solid #92400e; }
+    .cat-plugins { background: #172554; color: #60a5fa; border: 1px solid #1e40af; }
+    .cat-menus { background: #4a1942; color: #e879f9; border: 1px solid #86198f; }
+    .cat-widgets { background: #164e63; color: #22d3ee; border: 1px solid #0e7490; }
+    .cat-comments { background: #1c1917; color: #fbbf24; border: 1px solid #78350f; }
+    .cat-options { background: #0f1a0f; color: #86efac; border: 1px solid #166534; }
+    .cat-system { background: #1e1b2e; color: #a78bfa; border: 1px solid #5b21b6; }
+    .cat-core { background: #1a1a2e; color: #94a3b8; border: 1px solid #475569; }
+    .cat-wpcode { background: #1a0f0f; color: #fca5a5; border: 1px solid #b91c1c; }
+
+    .full-width { grid-column: 1 / -1; }
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 2rem 0 0.5rem;
+      color: #e4e4e7;
+    }
+    .section-desc {
+      font-size: 0.8125rem;
+      color: #71717a;
+      margin-bottom: 1rem;
+    }
+
+    /* Stats bar */
+    .stats {
+      display: flex;
+      gap: 2rem;
+      padding: 1rem 0;
+      margin-bottom: 1rem;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #6366f1;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: #52525b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>WP MCP <span>Ultimate</span> v2.0.0</h1>
+    <div>
+      <span class="badge badge-green">Active on collagenwise.ro</span>
+      <span class="badge badge-blue">68 Abilities</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('architecture')">Architecture</div>
+    <div class="tab" onclick="showTab('quickstart')">Quick Start</div>
+    <div class="tab" onclick="showTab('abilities')">All 68 Abilities</div>
+    <div class="tab" onclick="showTab('examples')">Usage Examples</div>
+  </div>
+
+  <!-- TAB 1: ARCHITECTURE -->
+  <div id="tab-architecture" class="content">
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value">3</div>
+        <div class="stat-label">MCP Tools</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">68</div>
+        <div class="stat-label">WordPress Abilities</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">11</div>
+        <div class="stat-label">Categories</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">1</div>
+        <div class="stat-label">Plugin (replaces 3)</div>
+      </div>
+    </div>
+
+    <div class="diagram-container">
+      <div class="mermaid">
+flowchart TD
+    subgraph CLIENT["AI Client (Claude Code, n8n, etc.)"]
+        direction LR
+        cl1["Claude Code"]
+        cl2["n8n / Make"]
+        cl3["Any MCP Client"]
+    end
+
+    subgraph PROXY["MCP Transport Layer"]
+        proxy["@automattic/mcp-wordpress-remote<br/><small>npm proxy — forwards JSON-RPC over HTTPS</small>"]
+    end
+
+    subgraph ENDPOINT["WordPress REST API"]
+        ep["POST /wp-json/mcp/wp-mcp-ultimate<br/><small>MCP Streamable HTTP Transport</small>"]
+    end
+
+    subgraph AUTH["Authentication Layer"]
+        auth["Application Password<br/><small>Basic Auth over HTTPS</small>"]
+        session["Mcp-Session-Id<br/><small>Stateful session tracking</small>"]
+    end
+
+    subgraph TOOLS["3 MCP Meta-Tools"]
+        direction LR
+        t1["🔍 discover-abilities<br/><small>List all 68 abilities</small>"]
+        t2["📋 get-ability-info<br/><small>Get schema & docs</small>"]
+        t3["⚡ execute-ability<br/><small>Run any ability</small>"]
+    end
+
+    subgraph ABILITIES["68 WordPress Abilities (11 Categories)"]
+        direction TB
+        subgraph ROW1[" "]
+            direction LR
+            a1["📝 Content<br/><small>17 abilities</small>"]
+            a2["📷 Media<br/><small>5 abilities</small>"]
+            a3["👥 Users<br/><small>6 abilities</small>"]
+        end
+        subgraph ROW2[" "]
+            direction LR
+            a4["🔌 Plugins<br/><small>6 abilities</small>"]
+            a5["📑 Menus<br/><small>7 abilities</small>"]
+            a6["💬 Comments<br/><small>6 abilities</small>"]
+        end
+        subgraph ROW3[" "]
+            direction LR
+            a7["⚙️ Options<br/><small>3 abilities</small>"]
+            a8["🧩 Widgets<br/><small>3 abilities</small>"]
+            a9["🔧 System<br/><small>3 abilities</small>"]
+        end
+        subgraph ROW4[" "]
+            direction LR
+            a10["🌐 Core<br/><small>3 abilities</small>"]
+            a11["📦 WPCode<br/><small>5 abilities</small>"]
+            a12["🔄 Meta<br/><small>3 abilities</small>"]
+        end
+    end
+
+    subgraph WP["WordPress Core"]
+        wpdb["Database"]
+        wpfs["Filesystem"]
+        wpcap["Capability System"]
+    end
+
+    CLIENT --> PROXY
+    PROXY --> ENDPOINT
+    ENDPOINT --> AUTH
+    AUTH --> TOOLS
+    t3 --> ABILITIES
+    ABILITIES --> WP
+
+    style TOOLS fill:#1e1b4b,stroke:#6366f1,stroke-width:2px
+    style ABILITIES fill:#0f1a0f,stroke:#22c55e,stroke-width:1px
+    style AUTH fill:#1c1917,stroke:#78350f,stroke-width:1px
+    style t3 fill:#312e81,stroke:#818cf8,stroke-width:2px
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:2rem">How It Works</div>
+    <div class="card-grid">
+      <div class="card">
+        <h3><span class="dot dot-indigo"></span> Meta-Tool Pattern</h3>
+        <ul>
+          <li>Instead of exposing 68 individual MCP tools, WP MCP Ultimate exposes <span class="highlight">only 3 meta-tools</span></li>
+          <li>This keeps the AI's tool list clean and prevents context window bloat</li>
+          <li>The AI discovers abilities dynamically, then executes them through <code>execute-ability</code></li>
+          <li>New abilities (from other plugins) are auto-discovered — <span class="highlight">no config changes needed</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="dot dot-green"></span> Replaces 3 Plugins</h3>
+        <ul>
+          <li><code>abilities-api</code> — WordPress Abilities API polyfill (bundled)</li>
+          <li><code>mcp-adapter</code> — MCP protocol server (bundled)</li>
+          <li><code>mcp-expose-abilities</code> — 57 WordPress abilities (bundled + extended)</li>
+          <li>One plugin, one endpoint, zero dependencies</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="dot dot-amber"></span> Security Model</h3>
+        <ul>
+          <li>WordPress Application Password auth over HTTPS</li>
+          <li>MCP session tracking via <code>Mcp-Session-Id</code> header</li>
+          <li>Each ability checks WordPress capabilities (e.g., <code>edit_posts</code>)</li>
+          <li>Double permission check: MCP layer + WordPress capability system</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: QUICK START -->
+  <div id="tab-quickstart" class="content">
+    <div class="section-title">Setup in 4 Steps</div>
+    <div class="section-desc">Get WP MCP Ultimate working with Claude Code in under 5 minutes.</div>
+
+    <div class="step-grid">
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-num step-num-1">1</div>
+          <h4>Install Plugin</h4>
+        </div>
+        <div class="step-body">
+          <p>Upload the plugin zip to WordPress via <strong>Plugins → Add New → Upload</strong>, or use WP-CLI:</p>
+          <div class="code-block">wp plugin install wp-mcp-ultimate.zip --activate</div>
+          <p>Deactivate the old plugins if you had them: <code>abilities-api</code>, <code>mcp-adapter</code>, <code>mcp-expose-abilities</code>.</p>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-num step-num-2">2</div>
+          <h4>Create Application Password</h4>
+        </div>
+        <div class="step-body">
+          <p>In WordPress admin: <strong>Users → Your Profile → Application Passwords</strong></p>
+          <p>Give it a name (e.g., "Claude Code") and click <strong>Add New</strong>. Copy the password.</p>
+          <p>The user must have <strong>Administrator</strong> role for full access to all abilities.</p>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-num step-num-3">3</div>
+          <h4>Configure Claude Code MCP</h4>
+        </div>
+        <div class="step-body">
+          <p>Add to <code>~/.claude/settings.json</code> under <code>mcpServers</code>:</p>
+          <div class="code-block"><span class="json-str">"wordpress"</span>: <span class="json-bracket">{</span>
+  <span class="json-key">"command"</span>: <span class="json-str">"npx"</span>,
+  <span class="json-key">"args"</span>: [<span class="json-str">"-y"</span>, <span class="json-str">"@automattic/mcp-wordpress-remote@latest"</span>],
+  <span class="json-key">"env"</span>: <span class="json-bracket">{</span>
+    <span class="json-key">"WP_API_URL"</span>: <span class="json-str">"https://yoursite.com/wp-json/mcp/wp-mcp-ultimate"</span>,
+    <span class="json-key">"WP_API_USERNAME"</span>: <span class="json-str">"your_username"</span>,
+    <span class="json-key">"WP_API_PASSWORD"</span>: <span class="json-str">"xxxx xxxx xxxx xxxx xxxx xxxx"</span>
+  <span class="json-bracket">}</span>
+<span class="json-bracket">}</span></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-num step-num-4">4</div>
+          <h4>Use It!</h4>
+        </div>
+        <div class="step-body">
+          <p>The MCP adapter exposes 3 tools in Claude Code:</p>
+          <p><code>wp-mcp-ultimate-discover-abilities</code> — list all abilities</p>
+          <p><code>wp-mcp-ultimate-get-ability-info</code> — get ability schema</p>
+          <p><code>wp-mcp-ultimate-execute-ability</code> — run any ability</p>
+          <p>Just ask Claude: <em>"List my WordPress posts"</em> or <em>"Create a draft post about X"</em></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Tool Name Issue</div>
+    <div class="section-desc">Current compatibility note with <code>@automattic/mcp-wordpress-remote</code></div>
+    <div class="card">
+      <h3><span class="dot dot-amber"></span> Known Issue</h3>
+      <ul>
+        <li>The Automattic MCP proxy expects tool names prefixed with <code>mcp-adapter-</code> (matching the old MCP Adapter plugin)</li>
+        <li>WP MCP Ultimate registers tools as <code>wp-mcp-ultimate-*</code> instead</li>
+        <li>The proxy's <code>discover-abilities</code> call fails because it looks for <code>mcp-adapter-discover-abilities</code></li>
+        <li><span class="highlight">Workaround</span>: Use <code>curl</code> or direct JSON-RPC calls to the endpoint, or rename the tool prefix in the plugin's <code>DefaultServerFactory.php</code></li>
+        <li><span class="highlight">Alternative</span>: The plugin's admin dashboard (WP Admin → MCP Ultimate) can generate a Claude Code config with the correct endpoint</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TAB 3: ALL ABILITIES -->
+  <div id="tab-abilities" class="content">
+    <div class="section-title">All 68 Registered Abilities</div>
+    <div class="section-desc">Organized by category. Each ability is accessed via <code>execute-ability</code> using its name.</div>
+
+    <table class="ability-table">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Ability Name</th>
+          <th>Description</th>
+          <th>Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Core -->
+        <tr><td><span class="cat-label cat-core">Core</span></td><td><code>core/get-site-info</code></td><td>Site name, URL, description, language</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-core">Core</span></td><td><code>core/get-user-info</code></td><td>Current authenticated user profile</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-core">Core</span></td><td><code>core/get-environment-info</code></td><td>PHP, DB, WP version info</td><td>Read</td></tr>
+
+        <!-- WPCode -->
+        <tr><td><span class="cat-label cat-wpcode">WPCode</span></td><td><code>wpcode/list-snippets</code></td><td>List all code snippets</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-wpcode">WPCode</span></td><td><code>wpcode/detect-snippet-errors</code></td><td>Check for flagged snippets</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-wpcode">WPCode</span></td><td><code>wpcode/get-error-logs</code></td><td>Snippet failure stack traces</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-wpcode">WPCode</span></td><td><code>wpcode/search-library</code></td><td>Search WPCode Cloud Library</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-wpcode">WPCode</span></td><td><code>wpcode/get-settings</code></td><td>WPCode global settings</td><td>Read</td></tr>
+
+        <!-- Content -->
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/list-posts</code></td><td>List posts with filters</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/get-post</code></td><td>Get single post by ID or slug</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/create-post</code></td><td>Create new post</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/update-post</code></td><td>Update existing post</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/delete-post</code></td><td>Delete post (trash or permanent)</td><td>Delete</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/patch-post</code></td><td>Find & replace in post content</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/list-pages</code></td><td>List pages with filters</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/get-page</code></td><td>Get single page</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/create-page</code></td><td>Create new page</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/update-page</code></td><td>Update existing page</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/delete-page</code></td><td>Delete page</td><td>Delete</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/patch-page</code></td><td>Find & replace in page content</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/list-categories</code></td><td>List categories</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/create-category</code></td><td>Create category</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/list-tags</code></td><td>List tags</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/create-tag</code></td><td>Create tag</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/search</code></td><td>Search posts, pages, media</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/list-revisions</code></td><td>List post/page revisions</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/get-revision</code></td><td>Get specific revision</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-content">Content</span></td><td><code>content/list-media</code></td><td>List media library items</td><td>Read</td></tr>
+
+        <!-- Media -->
+        <tr><td><span class="cat-label cat-media">Media</span></td><td><code>media/upload</code></td><td>Upload media from URL</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-media">Media</span></td><td><code>media/get</code></td><td>Get media item details</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-media">Media</span></td><td><code>media/update</code></td><td>Update media metadata</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-media">Media</span></td><td><code>media/delete</code></td><td>Delete media item</td><td>Delete</td></tr>
+
+        <!-- Users -->
+        <tr><td><span class="cat-label cat-users">Users</span></td><td><code>content/list-users</code></td><td>List users (basic)</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-users">Users</span></td><td><code>users/list</code></td><td>List users (extended)</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-users">Users</span></td><td><code>users/get</code></td><td>Get user by ID, login, or email</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-users">Users</span></td><td><code>users/create</code></td><td>Create new user</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-users">Users</span></td><td><code>users/update</code></td><td>Update user profile</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-users">Users</span></td><td><code>users/delete</code></td><td>Delete user</td><td>Delete</td></tr>
+
+        <!-- Plugins -->
+        <tr><td><span class="cat-label cat-plugins">Plugins</span></td><td><code>plugins/upload</code></td><td>Install plugin from URL</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-plugins">Plugins</span></td><td><code>plugins/upload-base64</code></td><td>Install plugin from base64/zip</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-plugins">Plugins</span></td><td><code>plugins/list</code></td><td>List all plugins</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-plugins">Plugins</span></td><td><code>plugins/delete</code></td><td>Delete plugin</td><td>Delete</td></tr>
+        <tr><td><span class="cat-label cat-plugins">Plugins</span></td><td><code>plugins/activate</code></td><td>Activate plugin</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-plugins">Plugins</span></td><td><code>plugins/deactivate</code></td><td>Deactivate plugin</td><td>Write</td></tr>
+
+        <!-- Menus -->
+        <tr><td><span class="cat-label cat-menus">Menus</span></td><td><code>menus/list</code></td><td>List all menus</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-menus">Menus</span></td><td><code>menus/get-items</code></td><td>Get menu items</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-menus">Menus</span></td><td><code>menus/create</code></td><td>Create menu</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-menus">Menus</span></td><td><code>menus/add-item</code></td><td>Add item to menu</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-menus">Menus</span></td><td><code>menus/update-item</code></td><td>Update menu item</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-menus">Menus</span></td><td><code>menus/delete-item</code></td><td>Delete menu item</td><td>Delete</td></tr>
+        <tr><td><span class="cat-label cat-menus">Menus</span></td><td><code>menus/assign-location</code></td><td>Assign menu to theme location</td><td>Write</td></tr>
+
+        <!-- Widgets -->
+        <tr><td><span class="cat-label cat-widgets">Widgets</span></td><td><code>widgets/list-sidebars</code></td><td>List widget sidebars</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-widgets">Widgets</span></td><td><code>widgets/get-sidebar</code></td><td>Get sidebar widgets</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-widgets">Widgets</span></td><td><code>widgets/list-available</code></td><td>List available widget types</td><td>Read</td></tr>
+
+        <!-- Comments -->
+        <tr><td><span class="cat-label cat-comments">Comments</span></td><td><code>comments/list</code></td><td>List comments with filters</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-comments">Comments</span></td><td><code>comments/get</code></td><td>Get single comment</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-comments">Comments</span></td><td><code>comments/update-status</code></td><td>Approve/hold/spam/trash comment</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-comments">Comments</span></td><td><code>comments/reply</code></td><td>Reply to comment</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-comments">Comments</span></td><td><code>comments/create</code></td><td>Create new comment</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-comments">Comments</span></td><td><code>comments/delete</code></td><td>Delete comment permanently</td><td>Delete</td></tr>
+
+        <!-- Options -->
+        <tr><td><span class="cat-label cat-options">Options</span></td><td><code>options/get</code></td><td>Get WordPress option</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-options">Options</span></td><td><code>options/update</code></td><td>Update WordPress option</td><td>Write</td></tr>
+        <tr><td><span class="cat-label cat-options">Options</span></td><td><code>options/list</code></td><td>List options by pattern</td><td>Read</td></tr>
+
+        <!-- System -->
+        <tr><td><span class="cat-label cat-system">System</span></td><td><code>system/get-transient</code></td><td>Get WordPress transient</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-system">System</span></td><td><code>system/debug-log</code></td><td>Read debug.log (tail + filter)</td><td>Read</td></tr>
+        <tr><td><span class="cat-label cat-system">System</span></td><td><code>system/toggle-debug</code></td><td>Toggle WP_DEBUG on/off</td><td>Write</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TAB 4: USAGE EXAMPLES -->
+  <div id="tab-examples" class="content">
+    <div class="section-title">Direct JSON-RPC Examples</div>
+    <div class="section-desc">Use these with curl or any MCP-compatible client. Remember to initialize a session first.</div>
+
+    <div class="card-grid">
+      <div class="card">
+        <h3><span class="dot dot-indigo"></span> Initialize Session</h3>
+        <div class="code-block"><span class="comment"># Step 1: Initialize and capture session ID</span>
+curl -s -D - \
+  -u "USERNAME:APP_PASSWORD" \
+  "https://yoursite.com/wp-json/mcp/wp-mcp-ultimate" \
+  -H "Content-Type: application/json" \
+  -d '<span class="json-bracket">{</span>
+    <span class="json-key">"jsonrpc"</span>: <span class="json-str">"2.0"</span>,
+    <span class="json-key">"method"</span>: <span class="json-str">"initialize"</span>,
+    <span class="json-key">"id"</span>: <span class="json-num">1</span>,
+    <span class="json-key">"params"</span>: <span class="json-bracket">{</span>
+      <span class="json-key">"protocolVersion"</span>: <span class="json-str">"2025-03-26"</span>,
+      <span class="json-key">"capabilities"</span>: <span class="json-bracket">{}</span>,
+      <span class="json-key">"clientInfo"</span>: <span class="json-bracket">{</span>
+        <span class="json-key">"name"</span>: <span class="json-str">"my-client"</span>,
+        <span class="json-key">"version"</span>: <span class="json-str">"1.0"</span>
+      <span class="json-bracket">}</span>
+    <span class="json-bracket">}</span>
+  <span class="json-bracket">}</span>'
+
+<span class="comment"># Look for: Mcp-Session-Id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span></div>
+      </div>
+
+      <div class="card">
+        <h3><span class="dot dot-green"></span> List Recent Posts</h3>
+        <div class="code-block"><span class="comment"># Use session ID from initialize</span>
+curl -s \
+  -u "USERNAME:APP_PASSWORD" \
+  "https://yoursite.com/wp-json/mcp/wp-mcp-ultimate" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: YOUR_SESSION_ID" \
+  -d '<span class="json-bracket">{</span>
+    <span class="json-key">"jsonrpc"</span>: <span class="json-str">"2.0"</span>,
+    <span class="json-key">"method"</span>: <span class="json-str">"tools/call"</span>,
+    <span class="json-key">"id"</span>: <span class="json-num">2</span>,
+    <span class="json-key">"params"</span>: <span class="json-bracket">{</span>
+      <span class="json-key">"name"</span>: <span class="json-str">"wp-mcp-ultimate-execute-ability"</span>,
+      <span class="json-key">"arguments"</span>: <span class="json-bracket">{</span>
+        <span class="json-key">"ability_name"</span>: <span class="json-str">"content/list-posts"</span>,
+        <span class="json-key">"parameters"</span>: <span class="json-bracket">{</span>
+          <span class="json-key">"per_page"</span>: <span class="json-num">5</span>,
+          <span class="json-key">"status"</span>: <span class="json-str">"publish"</span>
+        <span class="json-bracket">}</span>
+      <span class="json-bracket">}</span>
+    <span class="json-bracket">}</span>
+  <span class="json-bracket">}</span>'</div>
+      </div>
+
+      <div class="card">
+        <h3><span class="dot dot-amber"></span> Create a Draft Post</h3>
+        <div class="code-block">curl -s \
+  -u "USERNAME:APP_PASSWORD" \
+  "https://yoursite.com/wp-json/mcp/wp-mcp-ultimate" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: YOUR_SESSION_ID" \
+  -d '<span class="json-bracket">{</span>
+    <span class="json-key">"jsonrpc"</span>: <span class="json-str">"2.0"</span>,
+    <span class="json-key">"method"</span>: <span class="json-str">"tools/call"</span>,
+    <span class="json-key">"id"</span>: <span class="json-num">3</span>,
+    <span class="json-key">"params"</span>: <span class="json-bracket">{</span>
+      <span class="json-key">"name"</span>: <span class="json-str">"wp-mcp-ultimate-execute-ability"</span>,
+      <span class="json-key">"arguments"</span>: <span class="json-bracket">{</span>
+        <span class="json-key">"ability_name"</span>: <span class="json-str">"content/create-post"</span>,
+        <span class="json-key">"parameters"</span>: <span class="json-bracket">{</span>
+          <span class="json-key">"title"</span>: <span class="json-str">"My AI-Generated Post"</span>,
+          <span class="json-key">"content"</span>: <span class="json-str">"&lt;p&gt;Hello from MCP!&lt;/p&gt;"</span>,
+          <span class="json-key">"status"</span>: <span class="json-str">"draft"</span>
+        <span class="json-bracket">}</span>
+      <span class="json-bracket">}</span>
+    <span class="json-bracket">}</span>
+  <span class="json-bracket">}</span>'</div>
+      </div>
+
+      <div class="card">
+        <h3><span class="dot dot-cyan"></span> Search Content</h3>
+        <div class="code-block">curl -s \
+  -u "USERNAME:APP_PASSWORD" \
+  "https://yoursite.com/wp-json/mcp/wp-mcp-ultimate" \
+  -H "Content-Type: application/json" \
+  -H "Mcp-Session-Id: YOUR_SESSION_ID" \
+  -d '<span class="json-bracket">{</span>
+    <span class="json-key">"jsonrpc"</span>: <span class="json-str">"2.0"</span>,
+    <span class="json-key">"method"</span>: <span class="json-str">"tools/call"</span>,
+    <span class="json-key">"id"</span>: <span class="json-num">4</span>,
+    <span class="json-key">"params"</span>: <span class="json-bracket">{</span>
+      <span class="json-key">"name"</span>: <span class="json-str">"wp-mcp-ultimate-execute-ability"</span>,
+      <span class="json-key">"arguments"</span>: <span class="json-bracket">{</span>
+        <span class="json-key">"ability_name"</span>: <span class="json-str">"content/search"</span>,
+        <span class="json-key">"parameters"</span>: <span class="json-bracket">{</span>
+          <span class="json-key">"query"</span>: <span class="json-str">"collagen"</span>,
+          <span class="json-key">"type"</span>: <span class="json-str">"post"</span>,
+          <span class="json-key">"per_page"</span>: <span class="json-num">10</span>
+        <span class="json-bracket">}</span>
+      <span class="json-bracket">}</span>
+    <span class="json-bracket">}</span>
+  <span class="json-bracket">}</span>'</div>
+      </div>
+
+      <div class="card full-width">
+        <h3><span class="dot dot-pink"></span> Claude Code Natural Language</h3>
+        <div class="code-block"><span class="comment"># Once the MCP server is connected, just talk to Claude naturally:</span>
+
+"List my 5 most recent published posts"
+"Create a draft post titled 'Benefits of Marine Collagen' with an introduction paragraph"
+"Search for all posts about 'vitamin C'"
+"What plugins are active on my site?"
+"Show me the site name and description"
+"Upload this image from URL to the media library"
+"Deactivate the Hello Dolly plugin"
+"List all categories"
+"Get the debug log, filter for errors"
+"What users have admin role?"</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#08080a',
+        primaryColor: '#1e1b4b',
+        primaryTextColor: '#e4e4e7',
+        primaryBorderColor: '#6366f1',
+        lineColor: '#52525b',
+        secondaryColor: '#0f1a0f',
+        tertiaryColor: '#1c1917',
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '13px',
+        nodeTextColor: '#e4e4e7',
+      },
+      flowchart: {
+        htmlLabels: true,
+        curve: 'basis',
+        padding: 15,
+        nodeSpacing: 30,
+        rankSpacing: 40,
+      },
+    });
+
+    function showTab(name) {
+      document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.remove('hidden');
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>
