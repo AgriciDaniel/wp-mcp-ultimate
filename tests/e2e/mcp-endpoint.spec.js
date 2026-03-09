@@ -3,7 +3,8 @@ const { test, expect } = require('@playwright/test');
 const { WP_ADMIN_USER } = require('./wp-auth');
 
 // Application password created via: wp user application-password create 1 "playwright-test"
-const APP_PASSWORD = 'RuSuYH1rubGKlhkzq9yXaWlU';
+// Set WP_APP_PASSWORD env var, or regenerate locally with the command above
+const APP_PASSWORD = process.env.WP_APP_PASSWORD || 'regenerate-with-wp-cli';
 
 /**
  * Helper: Initialize an MCP session and return the session ID.
