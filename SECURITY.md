@@ -15,5 +15,7 @@ Only the latest version receives security updates.
 ## Security Practices
 
 - No credentials or API keys are stored in this repository
-- Install scripts write only to user-level directories (`~/.claude/`)
-- Python dependencies install in isolated virtual environments
+- WordPress nonces and capability checks are used for all admin actions
+- All user input is sanitized and escaped following WordPress coding standards
+- Database queries use prepared statements via `$wpdb->prepare()`
+- Dependencies are monitored via Dependabot for known vulnerabilities
