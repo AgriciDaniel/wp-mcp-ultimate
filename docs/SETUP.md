@@ -36,8 +36,10 @@ Then activate the plugin in **Plugins > Installed Plugins**.
 The MCP server endpoint is:
 
 ```
-https://YOUR-SITE.com/wp-json/mcp-adapter/v1/sse
+https://YOUR-SITE.com/wp-json/mcp/wp-mcp-ultimate
 ```
+
+The plugin uses **Streamable HTTP** transport (MCP protocol 2025-06-18). Do **not** append `/sse` to the URL.
 
 Authentication uses HTTP Basic Auth with your WordPress username and the generated Application Password.
 
@@ -49,8 +51,8 @@ Add to `~/.claude/settings.json`:
 {
   "mcpServers": {
     "wordpress": {
-      "type": "sse",
-      "url": "https://YOUR-SITE.com/wp-json/mcp-adapter/v1/sse",
+      "type": "streamable-http",
+      "url": "https://YOUR-SITE.com/wp-json/mcp/wp-mcp-ultimate",
       "headers": {
         "Authorization": "Basic BASE64_ENCODED_CREDENTIALS"
       }
@@ -67,11 +69,14 @@ Add to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "wordpress": {
-      "type": "sse",
-      "url": "https://YOUR-SITE.com/wp-json/mcp-adapter/v1/sse",
-      "headers": {
-        "Authorization": "Basic BASE64_ENCODED_CREDENTIALS"
-      }
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://YOUR-SITE.com/wp-json/mcp/wp-mcp-ultimate",
+        "--header",
+        "Authorization: Basic BASE64_ENCODED_CREDENTIALS"
+      ]
     }
   }
 }
@@ -85,11 +90,14 @@ Add to `.cursor/mcp.json`:
 {
   "mcpServers": {
     "wordpress": {
-      "type": "sse",
-      "url": "https://YOUR-SITE.com/wp-json/mcp-adapter/v1/sse",
-      "headers": {
-        "Authorization": "Basic BASE64_ENCODED_CREDENTIALS"
-      }
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://YOUR-SITE.com/wp-json/mcp/wp-mcp-ultimate",
+        "--header",
+        "Authorization: Basic BASE64_ENCODED_CREDENTIALS"
+      ]
     }
   }
 }
@@ -117,7 +125,8 @@ The admin dashboard generates this for you automatically.
 
 - Ensure your site is accessible from the internet (not just localhost)
 - Check that HTTPS is configured if your AI client requires it
-- Verify the URL includes the full path: `/wp-json/mcp-adapter/v1/sse`
+- Verify the URL includes the full path: `/wp-json/mcp/wp-mcp-ultimate`
+- Do **not** append `/sse` to the endpoint URL
 
 ### Conflict warnings
 
@@ -130,4 +139,4 @@ WP MCP Ultimate includes all functionality from these plugins.
 
 ### REST API disabled
 
-The plugin requires the WordPress REST API. If it's disabled by a security plugin, whitelist the `/wp-json/mcp-adapter/` endpoint.
+The plugin requires the WordPress REST API. If it's disabled by a security plugin, whitelist the `/wp-json/mcp/` endpoint.

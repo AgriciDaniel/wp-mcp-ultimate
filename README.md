@@ -6,7 +6,7 @@
 ![WordPress >= 6.7](https://img.shields.io/badge/WordPress-%3E%3D%206.7-21759B?logo=wordpress&logoColor=white)
 ![License GPL-2.0-or-later](https://img.shields.io/badge/License-GPL--2.0--or--later-blue)
 
-Connect WordPress to AI in one click. A self-contained MCP (Model Context Protocol) server plugin with 57 WordPress abilities -- manage posts, pages, media, users, plugins, menus, comments, and more through any MCP-compatible AI client. No other plugins needed.
+Connect WordPress to AI in one click. A self-contained MCP (Model Context Protocol) server plugin with 58 WordPress abilities -- manage posts, pages, media, users, plugins, menus, comments, and more through any MCP-compatible AI client. No other plugins needed.
 
 ## Quick Start
 
@@ -16,9 +16,9 @@ Connect WordPress to AI in one click. A self-contained MCP (Model Context Protoc
 
 ## Features
 
-- 57 WordPress abilities covering content, media, users, plugins, menus, widgets, comments, options, and system management
+- 58 WordPress abilities covering content, media, users, plugins, menus, widgets, comments, options, and system management
 - MCP protocol v2025-06-18 compliance
-- SSE (Server-Sent Events) transport
+- Streamable HTTP transport
 - Admin dashboard with API key management and one-click generation
 - Config export snippets for Claude Code, Claude Desktop, and Cursor
 - Conflict detection for legacy plugins (MCP Adapter, MCP Expose Abilities, Abilities API)
@@ -32,7 +32,7 @@ Connect WordPress to AI in one click. A self-contained MCP (Model Context Protoc
 ## Documentation
 
 - [Setup Guide](docs/SETUP.md) -- Detailed installation and configuration instructions
-- [Abilities Reference](docs/ABILITIES.md) -- Complete list of all 57 abilities with descriptions and required capabilities
+- [Abilities Reference](docs/ABILITIES.md) -- Complete list of all 58 abilities with descriptions and required capabilities
 
 ## Credit
 

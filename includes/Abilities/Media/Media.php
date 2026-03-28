@@ -180,6 +180,9 @@ class Media {
 						return array( 'success' => false, 'message' => esc_html__( 'URL is required', 'wp-mcp-ultimate' ) );
 					}
 
+					// Load WordPress admin includes for media_handle_sideload().
+					Helpers::load_admin_includes();
+
 					$post_id = $input['post_id'] ?? 0;
 
 					// Download file to temp location.

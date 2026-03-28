@@ -97,12 +97,13 @@ $base64_placeholder = 'BASE64_ENCODED_CREDENTIALS';
 
         <!-- Claude Code -->
         <div class="mcp-config-block">
-            <h3>Claude Code <code>~/.claude.json</code></h3>
+            <h3>Claude Code <code>~/.claude/settings.json</code></h3>
             <div class="mcp-code-wrapper">
                 <pre><code id="mcp-config-claude-code">{
   "mcpServers": {
     "wp-mcp-ultimate": {
-      "url": "<?php echo esc_url($rest_base); ?>/sse",
+      "type": "streamable-http",
+      "url": "<?php echo esc_url($rest_base); ?>",
       "headers": {
         "Authorization": "Basic <span class="mcp-placeholder"><?php echo esc_html($base64_placeholder); ?></span>"
       }
@@ -124,7 +125,7 @@ $base64_placeholder = 'BASE64_ENCODED_CREDENTIALS';
       "args": [
         "-y",
         "mcp-remote",
-        "<?php echo esc_url($rest_base); ?>/sse",
+        "<?php echo esc_url($rest_base); ?>",
         "--header",
         "Authorization: Basic <span class="mcp-placeholder"><?php echo esc_html($base64_placeholder); ?></span>"
       ]
@@ -146,7 +147,7 @@ $base64_placeholder = 'BASE64_ENCODED_CREDENTIALS';
       "args": [
         "-y",
         "mcp-remote",
-        "<?php echo esc_url($rest_base); ?>/sse",
+        "<?php echo esc_url($rest_base); ?>",
         "--header",
         "Authorization: Basic <span class="mcp-placeholder"><?php echo esc_html($base64_placeholder); ?></span>"
       ]
