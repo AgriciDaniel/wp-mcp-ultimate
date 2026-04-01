@@ -6,6 +6,8 @@
 ![WordPress >= 6.7](https://img.shields.io/badge/WordPress-%3E%3D%206.7-21759B?logo=wordpress&logoColor=white)
 ![License GPL-2.0-or-later](https://img.shields.io/badge/License-GPL--2.0--or--later-blue)
 
+> **Blog:** [Full setup guide and demo](https://agricidaniel.com/blog/wp-mcp-ultimate-wordpress-ai-plugin)
+
 Connect WordPress to AI in one click. A self-contained MCP (Model Context Protocol) server plugin with 58 WordPress abilities -- manage posts, pages, media, users, plugins, menus, comments, and more through any MCP-compatible AI client. No other plugins needed.
 
 ## Quick Start
