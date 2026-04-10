@@ -47,3 +47,14 @@ PRs welcome. Please open an issue first to discuss.
 ## License
 
 GPL-2.0-or-later. See [LICENSE](LICENSE) for the full text.
+
+---
+
+## Author
+
+Built by [Agrici Daniel](https://agricidaniel.com/about) - AI Workflow Architect.
+
+- [Blog](https://agricidaniel.com/blog) - Deep dives on AI marketing automation
+- [AI Marketing Hub](https://www.skool.com/ai-marketing-hub) - Free community, 2,800+ members
+- [YouTube](https://www.youtube.com/@AgriciDaniel) - Tutorials and demos
+- [All open-source tools](https://github.com/AgriciDaniel)
