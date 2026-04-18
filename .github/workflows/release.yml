@@ -22,7 +22,7 @@ jobs:
           rsync -av --exclude='.git' --exclude='.github' --exclude='.upstream' --exclude='docs/plans' --exclude='.gitignore' --exclude='build' . build/wp-mcp-ultimate/
           cd build && zip -r ../wp-mcp-ultimate-${{ steps.version.outputs.version }}.zip wp-mcp-ultimate/
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: wp-mcp-ultimate-${{ steps.version.outputs.version }}.zip
           generate_release_notes: true
