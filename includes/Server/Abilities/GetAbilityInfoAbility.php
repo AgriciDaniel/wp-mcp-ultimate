@@ -119,7 +119,7 @@ final class GetAbilityInfoAbility {
 		}
 
 		// Check basic capability requirement - allow customization via filter
-		$required_capability = apply_filters( 'wp_mcp_ultimate_get_ability_info_capability', 'read' );
+		$required_capability = apply_filters( 'wp_mcp_ultimate_get_ability_info_capability', 'edit_posts' );
 		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is determined dynamically via filter
 		if ( ! current_user_can( $required_capability ) ) {
 			return new \WP_Error(
