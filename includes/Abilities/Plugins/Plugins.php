@@ -26,13 +26,13 @@ class Plugins {
 						),
 						'activate'  => array(
 							'type'        => 'boolean',
-							'default'     => true,
-							'description' => 'Activate the plugin after installation.',
+							'default'     => false,
+							'description' => 'Activate the plugin after installation. Defaults to false; installs are reviewable before activation.',
 						),
 						'overwrite' => array(
 							'type'        => 'boolean',
-							'default'     => true,
-							'description' => 'Overwrite existing plugin if it exists.',
+							'default'     => false,
+							'description' => 'Overwrite existing plugin if it exists. Defaults to false to prevent silent replacement of existing plugins.',
 						),
 					),
 					'additionalProperties' => false,
@@ -55,8 +55,17 @@ class Plugins {
 						return array( 'success' => false, 'message' => esc_html__( 'Plugin URL is required', 'wp-mcp-ultimate' ) );
 					}
 
-					// Download the zip file.
-					$download_file = download_url( $input['url'] );
+					// Validate the source URL to block SSRF / internal fetches.
+					$ssrf = Helpers::validate_public_http_url( (string) $input['url'] );
+					if ( is_wp_error( $ssrf ) ) {
+						return array( 'success' => false, 'message' => esc_html( $ssrf->get_error_message() ) );
+					}
+
+					// Download with redirect re-validation so a public URL
+					// cannot 302 to 169.254.169.254 or similar.
+					$download_file = Helpers::with_ssrf_guard( static function () use ( $input ) {
+						return download_url( $input['url'] );
+					} );
 					if ( is_wp_error( $download_file ) ) {
 						/* translators: %s: Error message */
 						return array( 'success' => false, 'message' => esc_html__( 'Download failed: ', 'wp-mcp-ultimate' ) . esc_html( $download_file->get_error_message() ) );
@@ -106,13 +115,13 @@ class Plugins {
 						),
 						'activate'       => array(
 							'type'        => 'boolean',
-							'default'     => true,
-							'description' => 'Activate the plugin after installation.',
+							'default'     => false,
+							'description' => 'Activate the plugin after installation. Defaults to false; installs are reviewable before activation.',
 						),
 						'overwrite'      => array(
 							'type'        => 'boolean',
-							'default'     => true,
-							'description' => 'Overwrite existing plugin if it exists.',
+							'default'     => false,
+							'description' => 'Overwrite existing plugin if it exists. Defaults to false to prevent silent replacement of existing plugins.',
 						),
 					),
 					'additionalProperties' => false,
@@ -132,7 +141,49 @@ class Plugins {
 					Helpers::load_admin_includes();
 
 					if ( ! empty( $input['zip_path'] ) ) {
-						$zip_path = wp_normalize_path( $input['zip_path'] );
+						$zip_path = wp_normalize_path( (string) $input['zip_path'] );
+
+						// Confine zip_path to a small set of trusted bases to prevent
+						// an AI from installing arbitrary readable files on the server.
+						$uploads  = wp_upload_dir();
+						$bases    = array_filter(
+							array(
+								wp_normalize_path( $uploads['basedir'] ?? '' ),
+								wp_normalize_path( get_temp_dir() ),
+							)
+						);
+						/**
+						 * Additional allowed base directories for zip_path. Entries must
+						 * be absolute paths; subdirectories are permitted.
+						 *
+						 * @param string[] $bases Allowed base directories.
+						 */
+						$extra = apply_filters( 'wp_mcp_ultimate_plugin_zip_bases', array() );
+						if ( is_array( $extra ) ) {
+							foreach ( $extra as $base ) {
+								$norm = wp_normalize_path( (string) $base );
+								if ( $norm ) {
+									$bases[] = $norm;
+								}
+							}
+						}
+
+						$real_zip = realpath( $zip_path );
+						$allowed  = false;
+						if ( $real_zip ) {
+							foreach ( $bases as $base ) {
+								$real_base = realpath( $base );
+								if ( $real_base && 0 === strpos( $real_zip, rtrim( $real_base, '/' ) . '/' ) ) {
+									$allowed = true;
+									break;
+								}
+							}
+						}
+
+						if ( ! $allowed ) {
+							return array( 'success' => false, 'message' => esc_html__( 'zip_path must point inside the uploads directory or system temp directory.', 'wp-mcp-ultimate' ) );
+						}
+
 						if ( ! is_file( $zip_path ) || ! is_readable( $zip_path ) ) {
 							return array( 'success' => false, 'message' => esc_html__( 'zip_path must point to a readable .zip file', 'wp-mcp-ultimate' ) );
 						}

@@ -545,6 +545,13 @@ class Pages {
 						return array( 'success' => false, 'message' => esc_html__( 'Page not found', 'wp-mcp-ultimate' ) );
 					}
 
+					// Per-page capability check: the blanket 'delete_pages'
+					// guards the route, but the object-level map-meta cap
+					// decides who can delete *this particular* page.
+					if ( ! current_user_can( 'delete_page', (int) $input['id'] ) ) {
+						return array( 'success' => false, 'message' => esc_html__( 'You are not allowed to delete this page.', 'wp-mcp-ultimate' ) );
+					}
+
 					$force  = ! empty( $input['force'] );
 					$result = wp_delete_post( $input['id'], $force );
 
@@ -634,6 +641,13 @@ class Pages {
 						return array( 'success' => false, 'message' => esc_html__( 'Page not found', 'wp-mcp-ultimate' ) );
 					}
 
+					// Per-page capability check: the blanket 'edit_pages' cap
+					// guards the route, but map-meta 'edit_page' decides
+					// whether the current user can edit *this* page.
+					if ( ! current_user_can( 'edit_page', (int) $input['id'] ) ) {
+						return array( 'success' => false, 'message' => esc_html__( 'You are not allowed to edit this page.', 'wp-mcp-ultimate' ) );
+					}
+
 					$content   = $page->post_content;
 					$find      = $input['find'];
 					$replace   = $input['replace'];
@@ -642,9 +656,36 @@ class Pages {
 					$count     = 0;
 
 					if ( $use_regex ) {
-						$new_content = preg_replace( $find, $replace, $content, -1, $count );
-						if ( null === $new_content ) {
+						// Cap backtracking / recursion so an attacker-supplied
+						// pattern cannot catastrophically backtrack and hang
+						// the request (ReDoS).
+						$prev_backtrack = (int) ini_get( 'pcre.backtrack_limit' );
+						$prev_recursion = (int) ini_get( 'pcre.recursion_limit' );
+						@ini_set( 'pcre.backtrack_limit', '100000' );
+						@ini_set( 'pcre.recursion_limit', '100000' );
+
+						// Reject patterns that use the deprecated /e modifier
+						// (code-execution) defensively, even on PHP versions
+						// that have removed it.
+						if ( is_string( $find ) && preg_match( '/^([^\s\w\\\\])(?:.|\n)*\1[imsxuADSUXJ]*e[imsxuADSUXJ]*$/', $find ) ) {
+							return array( 'success' => false, 'message' => esc_html__( 'Regex /e modifier is not allowed', 'wp-mcp-ultimate' ) );
+						}
+
+						// Validate pattern up front so an invalid regex fails
+						// cleanly rather than being mis-interpreted later.
+						if ( @preg_match( $find, '' ) === false ) {
+							@ini_set( 'pcre.backtrack_limit', (string) $prev_backtrack );
+							@ini_set( 'pcre.recursion_limit', (string) $prev_recursion );
 							return array( 'success' => false, 'message' => esc_html__( 'Invalid regex pattern', 'wp-mcp-ultimate' ) );
+						}
+
+						$new_content = @preg_replace( $find, $replace, $content, -1, $count );
+
+						@ini_set( 'pcre.backtrack_limit', (string) $prev_backtrack );
+						@ini_set( 'pcre.recursion_limit', (string) $prev_recursion );
+
+						if ( null === $new_content || PREG_NO_ERROR !== preg_last_error() ) {
+							return array( 'success' => false, 'message' => esc_html__( 'Regex execution failed (pattern may cause catastrophic backtracking).', 'wp-mcp-ultimate' ) );
 						}
 					} else {
 						if ( -1 === $limit ) {

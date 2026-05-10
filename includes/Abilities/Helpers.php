@@ -10,6 +10,147 @@ namespace WpMcpUltimate\Abilities;
 class Helpers {
 
     /**
+     * Validate that a URL is safe to fetch from a public server context.
+     *
+     * Rejects non-HTTP(S) URLs, and any URL whose hostname resolves (IPv4 OR
+     * IPv6) to a private, loopback, link-local, or otherwise reserved range.
+     * Intended to protect ability callbacks like media/upload and plugins/upload
+     * against SSRF into cloud metadata endpoints (169.254.169.254 / fd00::/8)
+     * and internal services.
+     *
+     * Host filtering is layered with the `http_request_redirection_url` filter
+     * (see self::with_ssrf_guard) so 302 redirects to internal IPs also fail.
+     *
+     * @param string $url URL to validate.
+     * @return true|\WP_Error
+     */
+    public static function validate_public_http_url(string $url) {
+        $parts = wp_parse_url($url);
+        if (empty($parts['scheme']) || !in_array(strtolower($parts['scheme']), ['http', 'https'], true)) {
+            return new \WP_Error(
+                'blocked_url',
+                esc_html__('Only http(s) URLs are allowed.', 'wp-mcp-ultimate'),
+                ['status' => 403]
+            );
+        }
+        if (empty($parts['host'])) {
+            return new \WP_Error(
+                'blocked_url',
+                esc_html__('URL host is missing.', 'wp-mcp-ultimate'),
+                ['status' => 403]
+            );
+        }
+
+        /**
+         * Optional additional allow-list. Empty by default. When non-empty,
+         * only hosts matching (equal or DNS-suffix of) an entry are allowed.
+         *
+         * @param string[] $hosts Allowed host names.
+         */
+        $allow_hosts = apply_filters('wp_mcp_ultimate_url_allow_hosts', []);
+        if (!empty($allow_hosts) && is_array($allow_hosts)) {
+            $host_lower = strtolower($parts['host']);
+            $matched    = false;
+            foreach ($allow_hosts as $allowed) {
+                $allowed = strtolower((string) $allowed);
+                if ($allowed === $host_lower || str_ends_with($host_lower, '.' . $allowed)) {
+                    $matched = true;
+                    break;
+                }
+            }
+            if (!$matched) {
+                return new \WP_Error(
+                    'blocked_url',
+                    esc_html__('URL host is not in the allow-list.', 'wp-mcp-ultimate'),
+                    ['status' => 403]
+                );
+            }
+        }
+
+        // IP literal: validate directly.
+        if (filter_var($parts['host'], FILTER_VALIDATE_IP)) {
+            if (!self::ip_is_public($parts['host'])) {
+                return new \WP_Error(
+                    'blocked_url',
+                    esc_html__('URL resolves to a non-public address.', 'wp-mcp-ultimate'),
+                    ['status' => 403]
+                );
+            }
+            return true;
+        }
+
+        $records = @dns_get_record($parts['host'], DNS_A + DNS_AAAA);
+        if (empty($records)) {
+            $v4 = @gethostbynamel($parts['host']);
+            if (empty($v4)) {
+                return new \WP_Error(
+                    'blocked_url',
+                    esc_html__('URL host could not be resolved.', 'wp-mcp-ultimate'),
+                    ['status' => 403]
+                );
+            }
+            foreach ($v4 as $ip) {
+                if (!self::ip_is_public($ip)) {
+                    return new \WP_Error(
+                        'blocked_url',
+                        esc_html__('URL resolves to a non-public address.', 'wp-mcp-ultimate'),
+                        ['status' => 403]
+                    );
+                }
+            }
+            return true;
+        }
+
+        foreach ($records as $record) {
+            $ip = $record['ip'] ?? ($record['ipv6'] ?? '');
+            if ($ip && !self::ip_is_public($ip)) {
+                return new \WP_Error(
+                    'blocked_url',
+                    esc_html__('URL resolves to a non-public address.', 'wp-mcp-ultimate'),
+                    ['status' => 403]
+                );
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param string $ip IP literal.
+     */
+    public static function ip_is_public(string $ip): bool {
+        return (bool) filter_var(
+            $ip,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        );
+    }
+
+    /**
+     * Run $callback with an SSRF-safe redirect filter installed. Every
+     * redirection target is revalidated against validate_public_http_url().
+     *
+     * @template T
+     * @param callable():T $callback
+     * @return T
+     */
+    public static function with_ssrf_guard(callable $callback) {
+        $filter = static function ($redirect_url) {
+            $check = self::validate_public_http_url((string) $redirect_url);
+            if (is_wp_error($check)) {
+                return 0; // WP HTTP API treats 0 as "do not follow".
+            }
+            return $redirect_url;
+        };
+        add_filter('http_request_redirection_url', $filter, 10, 1);
+        try {
+            return $callback();
+        } finally {
+            remove_filter('http_request_redirection_url', $filter, 10);
+        }
+    }
+
+    /**
      * Ensure WordPress admin includes are loaded.
      * Call this early to prevent issues in REST API context.
      */
