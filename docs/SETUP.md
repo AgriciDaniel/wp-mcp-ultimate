@@ -113,6 +113,16 @@ echo -n "your_username:xxxx xxxx xxxx xxxx xxxx xxxx" | base64
 
 The admin dashboard generates this for you automatically.
 
+## Claude Web / Claude Mobile (OAuth Connectors)
+
+Clients that require OAuth (Claude Web custom connectors, Claude Mobile) can connect without a manually configured Authorization header. The plugin bundles an OAuth 2.1 authorization server with dynamic client registration:
+
+1. In Claude, add a custom connector with the URL `https://YOUR-SITE.com/wp-json/mcp/wp-mcp-ultimate`
+2. Claude discovers the OAuth endpoints automatically (via `/.well-known/oauth-authorization-server`), registers itself, and redirects you to your WordPress login
+3. Log in and approve the consent screen — the connector then acts with your user's permissions
+
+No Application Password is needed for OAuth clients. Access tokens expire after 1 hour and refresh automatically for 30 days.
+
 ## Troubleshooting
 
 ### "Unauthorized" or 401 errors
@@ -120,6 +130,20 @@ The admin dashboard generates this for you automatically.
 - Verify your Application Password is correct (spaces in the password are normal)
 - Ensure your WordPress user has administrator privileges
 - Check that pretty permalinks are enabled (**Settings > Permalinks** -- choose anything except "Plain")
+- **Apache/FastCGI hosts often strip the `Authorization` header** before it reaches WordPress, causing 401s with correct credentials. Add this to your `.htaccess`:
+
+  ```apache
+  RewriteEngine On
+  RewriteCond %{HTTP:Authorization} ^(.*)
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
+  ```
+
+### TLS / certificate errors (`CERT_HAS_EXPIRED`, `self-signed certificate`)
+
+`mcp-remote` (used by Claude Desktop configs) validates TLS certificates. Local or LAN sites with self-signed or expired certificates fail with `fetch failed ... CERT_HAS_EXPIRED`. Options:
+
+- Use a valid certificate (e.g. Let's Encrypt), or plain `http://` for a local-only site
+- For local development only, launch the client with `NODE_TLS_REJECT_UNAUTHORIZED=0` in its environment — never do this for a production site
 
 ### Connection refused or timeout
 
