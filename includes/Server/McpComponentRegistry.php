@@ -120,7 +120,7 @@ class McpComponentRegistry {
 			$ability = wp_get_ability( $tool_item );
 
 			if ( ! $ability ) {
-				$this->error_handler->log( "WordPress ability '{$tool_item}' does not exist.", array( "RegisterAbilityAsMcpTool::{$tool_item}" ) );
+				$this->error_handler->log( "WordPress ability '{$tool_item}' is not registered, so it will be missing from tools/list. Abilities must be registered during the 'wp_abilities_api_init' action; on WP 6.9+ core rejects registrations made outside it.", array( "RegisterAbilityAsMcpTool::{$tool_item}" ) );
 
 				// Track ability tool registration failure.
 				if ( $this->should_record_component_registration ) {

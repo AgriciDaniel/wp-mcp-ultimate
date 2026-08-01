@@ -56,6 +56,15 @@ final class McpAdapter {
 		if ( ! isset( self::$instance ) ) {
 			self::$instance = new self();
 
+			// The default category/abilities must be registered from inside the
+			// Abilities API init actions: WP 6.9+ core rejects any
+			// wp_register_ability() call made outside 'wp_abilities_api_init'
+			// (doing_action() guard), and the action can fire lazily at any
+			// point after 'init' — so the hooks have to be attached here at
+			// plugin load, never conditionally from rest_api_init.
+			add_action( 'wp_abilities_api_categories_init', array( self::$instance, 'register_default_category' ) );
+			add_action( 'wp_abilities_api_init', array( self::$instance, 'register_default_abilities' ) );
+
 			// In WP-CLI context, initialize immediately so commands have access to servers
 			if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) {
 				add_action( 'init', array( self::$instance, 'init' ), 20 );
@@ -257,21 +266,6 @@ final class McpAdapter {
 			return;
 		}
 
-		// Register default MCP category and abilities.
-		// If wp_abilities_api_init already fired (e.g. we're running on rest_api_init),
-		// call directly. Otherwise hook into the actions for when they fire later.
-		if ( did_action( 'wp_abilities_api_categories_init' ) ) {
-			$this->register_default_category();
-		} else {
-			add_action( 'wp_abilities_api_categories_init', array( $this, 'register_default_category' ) );
-		}
-
-		if ( did_action( 'wp_abilities_api_init' ) ) {
-			$this->register_default_abilities();
-		} else {
-			add_action( 'wp_abilities_api_init', array( $this, 'register_default_abilities' ) );
-		}
-
 		add_action( 'mcp_adapter_init', array( DefaultServerFactory::class, 'create' ) );
 	}
 
@@ -281,6 +275,10 @@ final class McpAdapter {
 	 * @return void
 	 */
 	public function register_default_category(): void {
+		if ( ! apply_filters( 'mcp_adapter_create_default_server', true ) ) {
+			return;
+		}
+
 		wp_register_ability_category(
 			'wp-mcp-ultimate',
 			array(
@@ -296,6 +294,10 @@ final class McpAdapter {
 	 * @return void
 	 */
 	public function register_default_abilities(): void {
+		if ( ! apply_filters( 'mcp_adapter_create_default_server', true ) ) {
+			return;
+		}
+
 		// Register the three core MCP abilities
 		DiscoverAbilitiesAbility::register();
 		GetAbilityInfoAbility::register();

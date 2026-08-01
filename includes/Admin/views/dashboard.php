@@ -38,6 +38,24 @@ $checks = [
 // Ability count.
 $ability_count = function_exists('wp_get_abilities') ? count(wp_get_abilities()) : null;
 
+// The MCP endpoint only exposes these three meta-tools; if they failed to
+// register, tools/list will be empty no matter how many abilities exist.
+$mcp_tool_names = [
+    'wp-mcp-ultimate/discover-abilities',
+    'wp-mcp-ultimate/get-ability-info',
+    'wp-mcp-ultimate/execute-ability',
+];
+$mcp_tools_ok = null;
+if (function_exists('wp_get_ability')) {
+    $mcp_tools_ok = true;
+    foreach ($mcp_tool_names as $mcp_tool_name) {
+        if (!wp_get_ability($mcp_tool_name)) {
+            $mcp_tools_ok = false;
+            break;
+        }
+    }
+}
+
 // Config placeholders.
 $auth_placeholder = '[username]:[password]';
 $base64_placeholder = 'BASE64_ENCODED_CREDENTIALS';
@@ -169,6 +187,19 @@ $base64_placeholder = 'BASE64_ENCODED_CREDENTIALS';
 
         <?php if ($ability_count !== null) : ?>
             <p class="mcp-ability-count"><?php echo (int) $ability_count; ?> abilities registered.</p>
+        <?php endif; ?>
+
+        <?php if ($mcp_tools_ok !== null) : ?>
+            <div class="mcp-status-row">
+                <span class="mcp-dot <?php echo $mcp_tools_ok ? 'mcp-dot-active' : 'mcp-dot-inactive'; ?>"></span>
+                <span>
+                    <?php if ($mcp_tools_ok) : ?>
+                        MCP tools registered &mdash; tools/list will expose them.
+                    <?php else : ?>
+                        MCP meta-tools failed to register &mdash; tools/list will be empty. Check the PHP error log for details.
+                    <?php endif; ?>
+                </span>
+            </div>
         <?php endif; ?>
 
         <button type="button" class="button button-secondary" id="mcp-test-connection" <?php echo $has_key ? '' : 'disabled'; ?>>
