@@ -31,9 +31,9 @@ final class WellKnown {
 		Responses::json(
 			array(
 				'issuer'                                 => $origin,
-				'authorization_endpoint'                 => $origin . '/authorize',
-				'token_endpoint'                          => $origin . '/oauth/token',
-				'registration_endpoint'                   => $origin . '/oauth/register',
+				'authorization_endpoint'                 => $origin . '/wp-mcp-oauth/authorize',
+				'token_endpoint'                          => $origin . '/wp-mcp-oauth/token',
+				'registration_endpoint'                   => $origin . '/wp-mcp-oauth/register',
 				'response_types_supported'                => array( 'code' ),
 				'grant_types_supported'                   => array( 'authorization_code', 'refresh_token' ),
 				'code_challenge_methods_supported'         => array( 'S256' ),

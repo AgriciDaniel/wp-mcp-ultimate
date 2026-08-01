@@ -46,12 +46,16 @@ final class Server {
 		return $response;
 	}
 
+	// Only the two /.well-known documents are location-constrained (clients
+	// derive them from the issuer origin). The interactive/machine endpoints
+	// are discovered from the metadata, so they live under a plugin-specific
+	// prefix that cannot shadow a real WordPress page slug like /authorize.
 	private const ROUTES = array(
 		'/.well-known/oauth-authorization-server',
 		'/.well-known/oauth-protected-resource',
-		'/authorize',
-		'/oauth/token',
-		'/oauth/register',
+		'/wp-mcp-oauth/authorize',
+		'/wp-mcp-oauth/token',
+		'/wp-mcp-oauth/register',
 	);
 
 	public static function route(): void {
@@ -71,13 +75,13 @@ final class Server {
 			case '/.well-known/oauth-protected-resource':
 				WellKnown::handle( 'protected-resource' );
 				return;
-			case '/authorize':
+			case '/wp-mcp-oauth/authorize':
 				AuthorizationEndpoint::handle();
 				return;
-			case '/oauth/token':
+			case '/wp-mcp-oauth/token':
 				TokenEndpoint::handle();
 				return;
-			case '/oauth/register':
+			case '/wp-mcp-oauth/register':
 				RegistrationEndpoint::handle();
 				return;
 		}

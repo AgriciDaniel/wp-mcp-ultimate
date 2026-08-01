@@ -14,6 +14,7 @@ final class TokenStore {
 	private const ACCESS_TTL     = 3600;      // 1 hour.
 	private const REFRESH_TTL    = 2592000;   // 30 days.
 	private const CLIENTS_OPTION = 'wp_mcp_ultimate_oauth_clients';
+	private const MAX_CLIENTS    = 100;
 
 	public static function generate_token(): string {
 		return bin2hex( random_bytes( 32 ) );
@@ -29,6 +30,19 @@ final class TokenStore {
 	public static function save_client( string $client_id, array $client ): void {
 		$clients               = get_option( self::CLIENTS_OPTION, array() );
 		$clients[ $client_id ] = $client;
+
+		// Registration is unauthenticated, so bound the stored set: keep the
+		// most recently created MAX_CLIENTS and drop the oldest beyond that.
+		if ( count( $clients ) > self::MAX_CLIENTS ) {
+			uasort(
+				$clients,
+				static function ( array $a, array $b ): int {
+					return ( $b['created'] ?? 0 ) <=> ( $a['created'] ?? 0 );
+				}
+			);
+			$clients = array_slice( $clients, 0, self::MAX_CLIENTS, true );
+		}
+
 		update_option( self::CLIENTS_OPTION, $clients, false );
 	}
 

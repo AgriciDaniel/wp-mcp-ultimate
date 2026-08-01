@@ -19,3 +19,17 @@ foreach ($users as $user) {
 
 // Clean up transients
 delete_transient('wp_mcp_ultimate_activated');
+
+// OAuth server data: registered clients option and token/code/rate-limit
+// transients (deleted directly — token transient names contain hashes, so
+// they cannot be enumerated via the transient API).
+delete_option('wp_mcp_ultimate_oauth_clients');
+global $wpdb;
+$wpdb->query(
+    "DELETE FROM {$wpdb->options}
+     WHERE option_name LIKE '\_transient\_mcp\_oauth\_%'
+        OR option_name LIKE '\_transient\_timeout\_mcp\_oauth\_%'"
+);
+if (function_exists('wp_cache_flush_group')) {
+    wp_cache_flush_group('transient');
+}

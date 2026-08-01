@@ -129,7 +129,8 @@ final class AuthorizationEndpoint {
 			'<span class="actor">' . esc_html( $user->user_login ) . '</span>'
 		);
 		?></p>
-		<form method="post" action="<?php echo esc_url( home_url( '/authorize' ) ); ?>">
+		<p><?php echo esc_html__( 'The application name above is self-reported by the connecting application. Only continue if you initiated this connection.', 'wp-mcp-ultimate' ); ?></p>
+		<form method="post" action="<?php echo esc_url( home_url( '/wp-mcp-oauth/authorize' ) ); ?>">
 			<?php wp_nonce_field( self::NONCE_ACTION ); ?>
 			<input type="hidden" name="client_id" value="<?php echo esc_attr( $client_id ); ?>">
 			<input type="hidden" name="redirect_uri" value="<?php echo esc_attr( $redirect_uri ); ?>">

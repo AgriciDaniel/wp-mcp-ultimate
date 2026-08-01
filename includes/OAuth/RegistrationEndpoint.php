@@ -9,11 +9,27 @@ namespace WpMcpUltimate\OAuth;
  */
 final class RegistrationEndpoint {
 
+	private const RATE_LIMIT          = 5;      // Registrations per IP per window.
+	private const RATE_LIMIT_WINDOW   = 3600;   // 1 hour.
+
 	public static function handle(): void {
 		Responses::maybe_handle_preflight();
 
 		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
 			Responses::oauth_error( 'invalid_request', 'Only POST is supported.', 405 );
+		}
+
+		// Registration is unauthenticated by design (RFC 7591 public
+		// clients), so it must be bounded: rate-limit per IP and cap the
+		// total number of stored clients (TokenStore prunes the oldest).
+		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+		if ( '' !== $ip ) {
+			$rate_key = 'mcp_oauth_reg_' . md5( $ip );
+			$attempts = (int) get_transient( $rate_key );
+			if ( $attempts >= self::RATE_LIMIT ) {
+				Responses::oauth_error( 'invalid_request', 'Too many registration attempts. Try again later.', 429 );
+			}
+			set_transient( $rate_key, $attempts + 1, self::RATE_LIMIT_WINDOW );
 		}
 
 		$raw  = file_get_contents( 'php://input' );

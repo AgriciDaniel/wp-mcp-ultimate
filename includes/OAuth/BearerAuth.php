@@ -25,6 +25,12 @@ final class BearerAuth {
 			return $user_id;
 		}
 
+		// Tokens are consented for MCP access only, so they must not
+		// authenticate arbitrary WordPress requests (wp/v2 REST, admin-ajax).
+		if ( ! self::is_mcp_request() ) {
+			return $user_id;
+		}
+
 		$header = self::get_authorization_header();
 		if ( '' === $header || 0 !== stripos( $header, 'Bearer ' ) ) {
 			return $user_id;
@@ -38,6 +44,22 @@ final class BearerAuth {
 		}
 
 		return (int) $payload['user_id'];
+	}
+
+	private static function is_mcp_request(): bool {
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+		$path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
+
+		if ( false !== strpos( $path, '/' . rest_get_url_prefix() . '/mcp/wp-mcp-ultimate' ) ) {
+			return true;
+		}
+
+		// Plain-permalink installs route REST through ?rest_route=.
+		if ( isset( $_GET['rest_route'] ) && 0 === strpos( (string) wp_unslash( $_GET['rest_route'] ), '/mcp/wp-mcp-ultimate' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing check only, no state change.
+			return true;
+		}
+
+		return false;
 	}
 
 	private static function get_authorization_header(): string {
