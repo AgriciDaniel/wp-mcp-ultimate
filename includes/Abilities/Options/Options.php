@@ -139,7 +139,6 @@ class Options {
 						'template',                 // Active theme — swap would bypass theme-install auth.
 						'stylesheet',               // Active stylesheet — same as above.
 						'current_theme',            // Theme identifier cached by WP.
-						'blogdescription',          // Tagline — low risk but often unintentional.
 						'WPLANG',                   // Site language — can flip admin UI.
 						'auth_key',                 // Secret keys (shouldn't be in DB, but defensive).
 						'auth_salt',

@@ -10,6 +10,57 @@ namespace WpMcpUltimate\Abilities;
 class Helpers {
 
     /**
+     * Run preg_replace() with ReDoS guards.
+     *
+     * Validates the pattern up front (which also rejects the removed /e
+     * modifier — PHP 7+ fails to compile it), then caps PCRE backtracking
+     * and recursion for the duration of the call so an attacker-supplied
+     * pattern cannot catastrophically backtrack and hang the request.
+     *
+     * @param string $find    Regex pattern.
+     * @param string $replace Replacement string.
+     * @param string $content Subject content.
+     * @return array{success:bool, content:?string, count:int, message:string}
+     */
+    public static function guarded_preg_replace(string $find, string $replace, string $content): array {
+        if (@preg_match($find, '') === false) {
+            return [
+                'success' => false,
+                'content' => null,
+                'count'   => 0,
+                'message' => esc_html__('Invalid regex pattern', 'wp-mcp-ultimate'),
+            ];
+        }
+
+        $prev_backtrack = (string) ini_get('pcre.backtrack_limit');
+        $prev_recursion = (string) ini_get('pcre.recursion_limit');
+        @ini_set('pcre.backtrack_limit', '100000');
+        @ini_set('pcre.recursion_limit', '100000');
+
+        $count       = 0;
+        $new_content = @preg_replace($find, $replace, $content, -1, $count);
+
+        @ini_set('pcre.backtrack_limit', $prev_backtrack);
+        @ini_set('pcre.recursion_limit', $prev_recursion);
+
+        if (null === $new_content || PREG_NO_ERROR !== preg_last_error()) {
+            return [
+                'success' => false,
+                'content' => null,
+                'count'   => 0,
+                'message' => esc_html__('Regex execution failed (pattern may cause catastrophic backtracking).', 'wp-mcp-ultimate'),
+            ];
+        }
+
+        return [
+            'success' => true,
+            'content' => $new_content,
+            'count'   => $count,
+            'message' => '',
+        ];
+    }
+
+    /**
      * Validate that a URL is safe to fetch from a public server context.
      *
      * Rejects non-HTTP(S) URLs, and any URL whose hostname resolves (IPv4 OR
@@ -20,6 +71,14 @@ class Helpers {
      *
      * Host filtering is layered with the `http_request_redirection_url` filter
      * (see self::with_ssrf_guard) so 302 redirects to internal IPs also fail.
+     *
+     * Known limitation: validation resolves DNS separately from the actual
+     * fetch, so a DNS-rebinding attacker (short-TTL record flipped between
+     * the two lookups) can still slip through. All callers are gated behind
+     * install_plugins/upload_files capabilities, so this is defense-in-depth
+     * against confused-deputy prompts, not a complete SSRF boundary. Sites
+     * needing a hard guarantee should use the wp_mcp_ultimate_url_allow_hosts
+     * allow-list filter below.
      *
      * @param string $url URL to validate.
      * @return true|\WP_Error

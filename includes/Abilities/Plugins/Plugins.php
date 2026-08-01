@@ -168,11 +168,16 @@ class Plugins {
 							}
 						}
 
+						// realpath() output must be normalized too: on Windows it
+						// returns backslashes, which would never prefix-match the
+						// normalized bases.
 						$real_zip = realpath( $zip_path );
+						$real_zip = $real_zip ? wp_normalize_path( $real_zip ) : false;
 						$allowed  = false;
 						if ( $real_zip ) {
 							foreach ( $bases as $base ) {
 								$real_base = realpath( $base );
+								$real_base = $real_base ? wp_normalize_path( $real_base ) : false;
 								if ( $real_base && 0 === strpos( $real_zip, rtrim( $real_base, '/' ) . '/' ) ) {
 									$allowed = true;
 									break;
@@ -184,14 +189,16 @@ class Plugins {
 							return array( 'success' => false, 'message' => esc_html__( 'zip_path must point inside the uploads directory or system temp directory.', 'wp-mcp-ultimate' ) );
 						}
 
-						if ( ! is_file( $zip_path ) || ! is_readable( $zip_path ) ) {
+						// From here on, operate on the resolved path so a symlink
+						// cannot swap the target after validation.
+						if ( ! is_file( $real_zip ) || ! is_readable( $real_zip ) ) {
 							return array( 'success' => false, 'message' => esc_html__( 'zip_path must point to a readable .zip file', 'wp-mcp-ultimate' ) );
 						}
-						if ( ! str_ends_with( $zip_path, '.zip' ) ) {
+						if ( ! str_ends_with( $real_zip, '.zip' ) ) {
 							return array( 'success' => false, 'message' => esc_html__( 'zip_path must point to a .zip file', 'wp-mcp-ultimate' ) );
 						}
 
-						return Helpers::install_plugin_zip( $zip_path, $input );
+						return Helpers::install_plugin_zip( $real_zip, $input );
 					}
 
 					if ( empty( $input['content_base64'] ) ) {
