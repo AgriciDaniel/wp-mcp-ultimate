@@ -306,7 +306,7 @@ class Posts {
 			'content/create-post',
 			array(
 				'label'               => 'Create Post',
-				'description'         => 'Create post. Params: title (required), content, excerpt, status, slug, category_ids, tag_ids, date, author_id.',
+				'description'         => 'Create post. Params: title (required), content, excerpt, status, slug, category_ids, tag_ids, date, author_id, featured_media.',
 				'category'            => 'site',
 				'input_schema'        => array(
 					'type'                 => 'object',
@@ -351,6 +351,10 @@ class Posts {
 						'author_id'    => array(
 							'type'        => 'integer',
 							'description' => 'Author user ID. Defaults to current user.',
+						),
+						'featured_media' => array(
+							'type'        => 'integer',
+							'description' => 'The ID of the media item to be used as the featured image for the post.',
 						),
 					),
 					'additionalProperties' => false,
@@ -409,11 +413,22 @@ class Posts {
 						wp_set_post_tags( $post_id, array_map( 'intval', $input['tag_ids'] ) );
 					}
 
+					$message = esc_html__( 'Post created successfully', 'wp-mcp-ultimate' );
+
+					if ( ! empty( $input['featured_media'] ) ) {
+						$featured_media = intval( $input['featured_media'] );
+						if ( wp_attachment_is_image( $featured_media ) ) {
+							set_post_thumbnail( $post_id, $featured_media );
+						} else {
+							$message .= ' ' . esc_html__( 'Warning: featured_media is not an image attachment ID; featured image was not set.', 'wp-mcp-ultimate' );
+						}
+					}
+
 					return array(
 						'success' => true,
 						'id'      => $post_id,
 						'link'    => get_permalink( $post_id ),
-						'message' => esc_html__( 'Post created successfully', 'wp-mcp-ultimate' ),
+						'message' => $message,
 					);
 				},
 				'permission_callback' => function (): bool {
@@ -436,7 +451,7 @@ class Posts {
 			'content/update-post',
 			array(
 				'label'               => 'Update Post',
-				'description'         => 'Update post. Params: id (required), title, content, excerpt, status, slug, category_ids, tag_ids, author_id.',
+				'description'         => 'Update post. Params: id (required), title, content, excerpt, status, slug, category_ids, tag_ids, author_id, featured_media (0 removes the featured image).',
 				'category'            => 'site',
 				'input_schema'        => array(
 					'type'                 => 'object',
@@ -480,6 +495,10 @@ class Posts {
 						'author_id'    => array(
 							'type'        => 'integer',
 							'description' => 'New author user ID.',
+						),
+						'featured_media' => array(
+							'type'        => 'integer',
+							'description' => 'The ID of the media item to be used as the featured image for the post. Pass 0 to remove the featured image.',
 						),
 					),
 					'additionalProperties' => false,
@@ -547,11 +566,24 @@ class Posts {
 						wp_set_post_tags( $input['id'], array_map( 'intval', $input['tag_ids'] ) );
 					}
 
+					$message = esc_html__( 'Post updated successfully', 'wp-mcp-ultimate' );
+
+					if ( isset( $input['featured_media'] ) ) {
+						$featured_media = intval( $input['featured_media'] );
+						if ( 0 === $featured_media ) {
+							delete_post_thumbnail( $input['id'] );
+						} elseif ( wp_attachment_is_image( $featured_media ) ) {
+							set_post_thumbnail( $input['id'], $featured_media );
+						} else {
+							$message .= ' ' . esc_html__( 'Warning: featured_media is not an image attachment ID; featured image was not changed.', 'wp-mcp-ultimate' );
+						}
+					}
+
 					return array(
 						'success' => true,
 						'id'      => $input['id'],
 						'link'    => get_permalink( $input['id'] ),
-						'message' => esc_html__( 'Post updated successfully', 'wp-mcp-ultimate' ),
+						'message' => $message,
 					);
 				},
 				'permission_callback' => function (): bool {
