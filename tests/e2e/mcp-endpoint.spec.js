@@ -90,7 +90,7 @@ test.describe('MCP Endpoint - Protocol Compliance', () => {
 		expect(result.protocolVersion).toBe('2025-06-18');
 		expect(result.serverInfo).toBeDefined();
 		expect(result.serverInfo.name).toContain('MCP');
-		expect(result.serverInfo.version).toBe('2.0.0');
+		expect(result.serverInfo.version).toBe('2.1.0');
 		expect(result.capabilities).toBeDefined();
 
 		// Should return a session ID header
@@ -159,8 +159,8 @@ test.describe('MCP Endpoint - Tool Execution', () => {
 		// The result could be an object with abilities array, or directly an array
 		const abilities = Array.isArray(parsed) ? parsed : parsed.abilities;
 		expect(Array.isArray(abilities)).toBeTruthy();
-		// Should have at least 57 abilities (our 57 + the 3 MCP core)
-		expect(abilities.length).toBeGreaterThanOrEqual(57);
+		// Should have at least the 58 domain abilities.
+		expect(abilities.length).toBeGreaterThanOrEqual(58);
 	});
 
 	test('get-ability-info returns details for a specific ability', async ({ request, baseURL }) => {
@@ -264,6 +264,56 @@ test.describe('MCP Endpoint - Tool Execution', () => {
 		const ourPlugin = plugins.find((p) => p.name === 'WP MCP Ultimate');
 		expect(ourPlugin).toBeDefined();
 		expect(ourPlugin.active).toBe(true);
+	});
+});
+
+test.describe('MCP Endpoint - Regression', () => {
+	// Issue #3: clients (Claude Code/Cowork) send `parameters` as a JSON
+	// string. The advertised schema now accepts [object, string] and the
+	// server decodes it.
+	test('execute-ability accepts stringified JSON parameters', async ({ request, baseURL }) => {
+		const { sessionId } = await mcpInitialize(request, baseURL);
+
+		const response = await mcpRequest(request, baseURL, sessionId, 'tools/call', {
+			name: 'wp-mcp-ultimate-execute-ability',
+			arguments: {
+				ability_name: 'options/get',
+				parameters: JSON.stringify({ name: 'blogname' }),
+			},
+		}, 8);
+
+		expect(response.status()).toBe(200);
+		const body = await response.json();
+		const textContent = body.result?.content?.find((c) => c.type === 'text');
+		expect(textContent).toBeDefined();
+		const result = JSON.parse(textContent.text);
+		expect(result.success).toBe(true);
+		expect(result.data.name).toBe('blogname');
+	});
+
+	test('execute-ability rejects an unparseable parameters string', async ({ request, baseURL }) => {
+		const { sessionId } = await mcpInitialize(request, baseURL);
+
+		const response = await mcpRequest(request, baseURL, sessionId, 'tools/call', {
+			name: 'wp-mcp-ultimate-execute-ability',
+			arguments: {
+				ability_name: 'options/get',
+				parameters: 'not-json{',
+			},
+		}, 9);
+
+		const body = await response.json();
+		// Surfaces as an isError tool result or a success=false payload — either
+		// way it must not be a silent success.
+		const textContent = body.result?.content?.find((c) => c.type === 'text');
+		if (textContent) {
+			const result = JSON.parse(textContent.text);
+			if (typeof result.success !== 'undefined') {
+				expect(result.success).toBe(false);
+			}
+		} else {
+			expect(body.error).toBeDefined();
+		}
 	});
 });
 

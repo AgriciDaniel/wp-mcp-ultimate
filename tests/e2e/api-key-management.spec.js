@@ -95,4 +95,32 @@ test.describe('API Key Management', () => {
 		expect(result.success).toBe(true);
 		expect(result.data.message).toContain('revoked');
 	});
+
+	// Issues #5 / #12: Test Connection used to send the app-password UUID as
+	// the password and always returned 401. It now performs a real MCP
+	// initialize round-trip with a temporary password.
+	test('AJAX test connection succeeds after a key exists', async ({ page, baseURL }) => {
+		await page.goto(`${baseURL}/wp-admin/tools.php?page=wp-mcp-ultimate`);
+		const nonce = await page.evaluate(() => window.wpMcpUltimate?.nonce || '');
+
+		// Ensure a key exists first (the test button is gated on it).
+		await page.evaluate(async ({ ajaxUrl, nonce }) => {
+			const formData = new FormData();
+			formData.append('action', 'wp_mcp_ultimate_generate_key');
+			formData.append('nonce', nonce);
+			await fetch(ajaxUrl, { method: 'POST', body: formData, credentials: 'same-origin' });
+		}, { ajaxUrl: `${baseURL}/wp-admin/admin-ajax.php`, nonce });
+
+		const result = await page.evaluate(async ({ ajaxUrl, nonce }) => {
+			const formData = new FormData();
+			formData.append('action', 'wp_mcp_ultimate_test_connection');
+			formData.append('nonce', nonce);
+			const response = await fetch(ajaxUrl, { method: 'POST', body: formData, credentials: 'same-origin' });
+			return response.json();
+		}, { ajaxUrl: `${baseURL}/wp-admin/admin-ajax.php`, nonce });
+
+		expect(result.success).toBe(true);
+		expect(result.data.status).toBe(200);
+		expect(result.data.message).toContain('successful');
+	});
 });
