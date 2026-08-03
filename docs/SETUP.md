@@ -121,7 +121,13 @@ Clients that require OAuth (Claude Web custom connectors, Claude Mobile) can con
 2. Claude discovers the OAuth endpoints automatically (via `/.well-known/oauth-authorization-server`), registers itself, and redirects you to your WordPress login
 3. Log in and approve the consent screen — the connector then acts with your user's permissions
 
-No Application Password is needed for OAuth clients. Access tokens expire after 1 hour and refresh automatically for 30 days.
+No Application Password is needed for OAuth clients. Access tokens expire after 1 hour and refresh automatically for 30 days. Your WordPress account needs at least the `edit_posts` capability (Author role or above) for the connector to work.
+
+**Requirements and caveats:**
+
+- **Pretty permalinks must be enabled** (Settings > Permalinks, anything except "Plain"). The OAuth and `.well-known` endpoints are served through WordPress's front controller, which the "Plain" setting does not route.
+- **Subdirectory installs:** the discovery documents are served relative to your site address (e.g. `https://site.com/blog/.well-known/oauth-authorization-server`). Most MCP clients accept this, but strictly RFC 8414-conformant clients that only look at the domain root may not complete the flow — install WordPress at the domain root, or use an Application Password instead, if your client requires it.
+- To disable the bundled OAuth server entirely (Application-Password-only sites): `add_filter('wp_mcp_ultimate_enable_oauth', '__return_false');`
 
 ## Troubleshooting
 

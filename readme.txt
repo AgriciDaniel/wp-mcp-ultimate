@@ -8,19 +8,20 @@ Requires PHP: 8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
-Connect WordPress to AI in one click. Full MCP server with 57 abilities.
+Connect WordPress to AI in one click. Full MCP server with 58 abilities.
 
 == Description ==
 
-WP MCP Ultimate is a self-contained MCP (Model Context Protocol) server plugin for WordPress. It provides 57 abilities that let any MCP-compatible AI client manage your WordPress site -- posts, pages, media, users, plugins, menus, widgets, comments, options, and system settings.
+WP MCP Ultimate is a self-contained MCP (Model Context Protocol) server plugin for WordPress. It provides 58 abilities that let any MCP-compatible AI client manage your WordPress site -- posts, pages, media, users, plugins, menus, widgets, comments, options, and system settings.
 
 This plugin combines the functionality of MCP Adapter, MCP Expose Abilities, and Abilities API into a single install. No other plugins are needed.
 
 Key features:
 
-* 57 WordPress abilities organized across 9 domains
+* 58 WordPress abilities organized across 9 domains
 * MCP protocol v2025-06-18 with SSE transport
-* Admin dashboard with API key generation
+* Application Password auth, plus a bundled OAuth 2.1 server for Claude Web/Mobile connectors
+* Admin dashboard with API key generation and connection testing
 * Config export for Claude Code, Claude Desktop, and Cursor
 * Conflict detection for legacy MCP plugins
 * Abilities API polyfill for WordPress < 6.9

@@ -16,12 +16,15 @@ Connect WordPress to AI in one click. A self-contained MCP (Model Context Protoc
 2. **Generate an API key**: Go to Tools > MCP Ultimate in your WordPress admin and click Generate to create an Application Password.
 3. **Configure your AI client**: Copy the MCP server config snippet shown on the dashboard into your AI client's configuration file.
 
+> **Authentication:** Application Passwords work everywhere. For clients that require OAuth (Claude Web custom connectors, Claude Mobile), the plugin also bundles an OAuth 2.1 authorization server with PKCE and dynamic client registration -- point the connector at the MCP endpoint and it discovers everything automatically. See the [Setup Guide](docs/SETUP.md). By default, reaching the MCP endpoint requires the `edit_posts` capability (filterable), and plugin installs no longer auto-activate; both are covered in [SECURITY.md](SECURITY.md).
+
 ## Features
 
 - 58 WordPress abilities covering content, media, users, plugins, menus, widgets, comments, options, and system management
 - MCP protocol v2025-06-18 compliance
 - Streamable HTTP transport
-- Admin dashboard with API key management and one-click generation
+- Application Password auth **and** a bundled OAuth 2.1 server (PKCE + dynamic client registration) for Claude Web/Mobile connectors
+- Admin dashboard with API key management, one-click generation, and connection testing
 - Config export snippets for Claude Code, Claude Desktop, and Cursor
 - Conflict detection for legacy plugins (MCP Adapter, MCP Expose Abilities, Abilities API)
 - Abilities API polyfill for WordPress < 6.9
