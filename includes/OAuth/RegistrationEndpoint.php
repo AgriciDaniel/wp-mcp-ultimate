@@ -9,8 +9,11 @@ namespace WpMcpUltimate\OAuth;
  */
 final class RegistrationEndpoint {
 
-	private const RATE_LIMIT          = 5;      // Registrations per IP per window.
-	private const RATE_LIMIT_WINDOW   = 3600;   // 1 hour.
+	private const RATE_LIMIT         = 5;      // Registrations per IP per window.
+	private const RATE_LIMIT_WINDOW  = 3600;   // 1 hour.
+	private const MAX_REDIRECT_URIS  = 5;      // Per client.
+	private const MAX_URI_LENGTH     = 2000;   // Per redirect_uri.
+	private const MAX_CLIENT_NAME    = 200;    // Characters.
 
 	public static function handle(): void {
 		Responses::maybe_handle_preflight();
@@ -22,9 +25,17 @@ final class RegistrationEndpoint {
 		// Registration is unauthenticated by design (RFC 7591 public
 		// clients), so it must be bounded: rate-limit per IP and cap the
 		// total number of stored clients (TokenStore prunes the oldest).
+		// NOTE: REMOTE_ADDR is the direct peer; behind a reverse proxy or CDN
+		// every visitor may share one address, making this a per-window cap
+		// for the whole site rather than per client. That is intentionally
+		// fail-safe (it can only over-limit, never under-limit).
 		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 		if ( '' !== $ip ) {
-			$rate_key = 'mcp_oauth_reg_' . md5( $ip );
+			// Fixed window keyed by the current time bucket, so a busy window
+			// cannot slide its own expiry forward and lock the endpoint
+			// indefinitely — each bucket expires on its own.
+			$bucket   = (int) floor( time() / self::RATE_LIMIT_WINDOW );
+			$rate_key = 'mcp_oauth_reg_' . md5( $ip ) . '_' . $bucket;
 			$attempts = (int) get_transient( $rate_key );
 			if ( $attempts >= self::RATE_LIMIT ) {
 				Responses::oauth_error( 'invalid_request', 'Too many registration attempts. Try again later.', 429 );
@@ -43,15 +54,18 @@ final class RegistrationEndpoint {
 		if ( ! is_array( $redirect_uris ) || empty( $redirect_uris ) ) {
 			Responses::oauth_error( 'invalid_redirect_uri', 'redirect_uris is required and must be a non-empty array.' );
 		}
+		if ( count( $redirect_uris ) > self::MAX_REDIRECT_URIS ) {
+			Responses::oauth_error( 'invalid_redirect_uri', 'Too many redirect_uris.' );
+		}
 
 		foreach ( $redirect_uris as $uri ) {
-			if ( ! is_string( $uri ) || ! self::is_valid_redirect_uri( $uri ) ) {
+			if ( ! is_string( $uri ) || strlen( $uri ) > self::MAX_URI_LENGTH || ! self::is_valid_redirect_uri( $uri ) ) {
 				Responses::oauth_error( 'invalid_redirect_uri', 'Every redirect_uri must be an https:// URL, or an http:// loopback URL.' );
 			}
 		}
 
 		$client_name = isset( $body['client_name'] ) && is_string( $body['client_name'] )
-			? sanitize_text_field( $body['client_name'] )
+			? sanitize_text_field( mb_substr( $body['client_name'], 0, self::MAX_CLIENT_NAME ) )
 			: 'MCP Client';
 
 		$client_id = bin2hex( random_bytes( 16 ) );

@@ -67,12 +67,18 @@ final class TokenEndpoint {
 			Responses::oauth_error( 'invalid_request', 'refresh_token is required.' );
 		}
 
+		// OAuth 2.1 requires public clients to authenticate the token request
+		// by sending client_id on every call.
+		if ( '' === $client_id ) {
+			Responses::oauth_error( 'invalid_request', 'client_id is required.' );
+		}
+
 		$payload = TokenStore::consume_refresh_token( $refresh_token );
 		if ( ! $payload ) {
 			Responses::oauth_error( 'invalid_grant', 'The refresh token is invalid or expired.' );
 		}
 
-		if ( '' !== $client_id && $payload['client_id'] !== $client_id ) {
+		if ( $payload['client_id'] !== $client_id ) {
 			Responses::oauth_error( 'invalid_grant', 'client_id does not match the original grant.' );
 		}
 
@@ -104,7 +110,8 @@ final class TokenEndpoint {
 	}
 
 	private static function parse_body(): array {
-		$content_type = $_SERVER['CONTENT_TYPE'] ?? '';
+		// Some SAPIs expose the header only as HTTP_CONTENT_TYPE.
+		$content_type = $_SERVER['CONTENT_TYPE'] ?? ( $_SERVER['HTTP_CONTENT_TYPE'] ?? '' );
 
 		if ( false !== stripos( $content_type, 'application/json' ) ) {
 			$decoded = json_decode( (string) file_get_contents( 'php://input' ), true );

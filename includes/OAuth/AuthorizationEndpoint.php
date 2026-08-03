@@ -19,9 +19,16 @@ final class AuthorizationEndpoint {
 		$params = 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) ? $_POST : $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce is verified explicitly below for POST.
 
 		$client_id     = isset( $params['client_id'] ) ? sanitize_text_field( wp_unslash( $params['client_id'] ) ) : '';
-		$redirect_uri  = isset( $params['redirect_uri'] ) ? esc_url_raw( wp_unslash( $params['redirect_uri'] ) ) : '';
+		// redirect_uri and state are compared/echoed exactly, not interpreted:
+		// redirect_uri must match a value stored verbatim at registration (so
+		// esc_url_raw's normalization would break exotic-but-registered URIs),
+		// and state is an opaque client value. Keep them raw here; they are
+		// escaped at each output site (esc_attr in the form, add_query_arg on
+		// redirect). redirect_uri is only ever used after an exact allow-list
+		// match below.
+		$redirect_uri  = isset( $params['redirect_uri'] ) ? wp_unslash( $params['redirect_uri'] ) : '';
 		$response_type = isset( $params['response_type'] ) ? sanitize_text_field( wp_unslash( $params['response_type'] ) ) : '';
-		$state         = isset( $params['state'] ) ? sanitize_text_field( wp_unslash( $params['state'] ) ) : '';
+		$state         = isset( $params['state'] ) ? wp_unslash( $params['state'] ) : '';
 		$scope         = isset( $params['scope'] ) ? sanitize_text_field( wp_unslash( $params['scope'] ) ) : 'mcp';
 		$code_challenge        = isset( $params['code_challenge'] ) ? sanitize_text_field( wp_unslash( $params['code_challenge'] ) ) : '';
 		$code_challenge_method = isset( $params['code_challenge_method'] ) ? sanitize_text_field( wp_unslash( $params['code_challenge_method'] ) ) : '';
@@ -44,9 +51,23 @@ final class AuthorizationEndpoint {
 		}
 
 		if ( ! is_user_logged_in() ) {
-			$current_url = ( is_ssl() ? 'https://' : 'http://' ) . ( $_SERVER['HTTP_HOST'] ?? '' ) . ( $_SERVER['REQUEST_URI'] ?? '' );
+			// Build the return URL from home_url(), not the client-supplied
+			// Host header, so a spoofed Host can't steer the post-login redirect.
+			$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+			$current_url = home_url( $request_uri );
 			wp_safe_redirect( wp_login_url( $current_url ) );
 			exit;
+		}
+
+		// The MCP transport requires 'edit_posts'; a token minted for a
+		// lower-privileged user would connect and then 403 on every call.
+		// Surface that here instead of after a confusing "connected" state.
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			Responses::html_error(
+				'Insufficient permissions',
+				'Your WordPress account does not have permission to use the MCP tools (edit_posts is required). Ask an administrator for a role with post-editing access, then try connecting again.',
+				403
+			);
 		}
 
 		$is_post = 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' );
