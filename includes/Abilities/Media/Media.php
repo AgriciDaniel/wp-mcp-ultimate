@@ -192,10 +192,9 @@ class Media {
 
 					$post_id = $input['post_id'] ?? 0;
 
-					// Download with redirect re-validation.
-					$tmp = Helpers::with_ssrf_guard( static function () use ( $input ) {
-						return download_url( $input['url'] );
-					} );
+					// Download with every redirect hop re-validated and no
+					// unvalidated redirect followed on the final fetch.
+					$tmp = Helpers::safe_download_url( (string) $input['url'] );
 					if ( is_wp_error( $tmp ) ) {
 						/* translators: %s: Error message */
 						return array( 'success' => false, 'message' => esc_html( $tmp->get_error_message() ) );

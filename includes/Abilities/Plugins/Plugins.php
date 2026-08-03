@@ -61,11 +61,9 @@ class Plugins {
 						return array( 'success' => false, 'message' => esc_html( $ssrf->get_error_message() ) );
 					}
 
-					// Download with redirect re-validation so a public URL
-					// cannot 302 to 169.254.169.254 or similar.
-					$download_file = Helpers::with_ssrf_guard( static function () use ( $input ) {
-						return download_url( $input['url'] );
-					} );
+					// Download with every redirect hop re-validated so a public
+					// URL cannot 302 to 169.254.169.254 or similar.
+					$download_file = Helpers::safe_download_url( (string) $input['url'] );
 					if ( is_wp_error( $download_file ) ) {
 						/* translators: %s: Error message */
 						return array( 'success' => false, 'message' => esc_html__( 'Download failed: ', 'wp-mcp-ultimate' ) . esc_html( $download_file->get_error_message() ) );

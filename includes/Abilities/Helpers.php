@@ -69,8 +69,9 @@ class Helpers {
      * against SSRF into cloud metadata endpoints (169.254.169.254 / fd00::/8)
      * and internal services.
      *
-     * Host filtering is layered with the `http_request_redirection_url` filter
-     * (see self::with_ssrf_guard) so 302 redirects to internal IPs also fail.
+     * Redirects are handled by self::safe_download_url(), which validates
+     * every hop of the redirect chain and disallows any further redirect on
+     * the final download, so a public URL cannot 302 into an internal one.
      *
      * Known limitation: validation resolves DNS separately from the actual
      * fetch, so a DNS-rebinding attacker (short-TTL record flipped between
@@ -138,31 +139,17 @@ class Helpers {
             return true;
         }
 
-        $records = @dns_get_record($parts['host'], DNS_A + DNS_AAAA);
-        if (empty($records)) {
-            $v4 = @gethostbynamel($parts['host']);
-            if (empty($v4)) {
-                return new \WP_Error(
-                    'blocked_url',
-                    esc_html__('URL host could not be resolved.', 'wp-mcp-ultimate'),
-                    ['status' => 403]
-                );
-            }
-            foreach ($v4 as $ip) {
-                if (!self::ip_is_public($ip)) {
-                    return new \WP_Error(
-                        'blocked_url',
-                        esc_html__('URL resolves to a non-public address.', 'wp-mcp-ultimate'),
-                        ['status' => 403]
-                    );
-                }
-            }
-            return true;
+        $ips = self::resolve_host_ips($parts['host']);
+        if (empty($ips)) {
+            return new \WP_Error(
+                'blocked_url',
+                esc_html__('URL host could not be resolved.', 'wp-mcp-ultimate'),
+                ['status' => 403]
+            );
         }
 
-        foreach ($records as $record) {
-            $ip = $record['ip'] ?? ($record['ipv6'] ?? '');
-            if ($ip && !self::ip_is_public($ip)) {
+        foreach ($ips as $ip) {
+            if (!self::ip_is_public($ip)) {
                 return new \WP_Error(
                     'blocked_url',
                     esc_html__('URL resolves to a non-public address.', 'wp-mcp-ultimate'),
@@ -172,6 +159,43 @@ class Helpers {
         }
 
         return true;
+    }
+
+    /**
+     * Resolve a hostname to every A and AAAA address it maps to.
+     *
+     * Uses dns_get_record() for both families, then falls back to
+     * gethostbynamel() when that returns nothing usable (some hosts have
+     * dns_get_record() disabled, and a CNAME-only answer yields no IP —
+     * gethostbynamel() follows the CNAME). An empty result means the caller
+     * must fail closed rather than assume the host is safe.
+     *
+     * @param string $host Hostname (not an IP literal).
+     * @return string[] Resolved IP addresses (IPv4 and/or IPv6).
+     */
+    private static function resolve_host_ips(string $host): array {
+        $ips     = [];
+        $records = @dns_get_record($host, DNS_A + DNS_AAAA);
+        if (!empty($records) && is_array($records)) {
+            foreach ($records as $record) {
+                if (!empty($record['ip'])) {
+                    $ips[] = $record['ip'];
+                } elseif (!empty($record['ipv6'])) {
+                    $ips[] = $record['ipv6'];
+                }
+            }
+        }
+
+        // Fallback covers dns_get_record() being unavailable or returning
+        // only a CNAME (no A/AAAA); gethostbynamel() resolves through it.
+        if (empty($ips)) {
+            $v4 = @gethostbynamel($host);
+            if (!empty($v4)) {
+                $ips = $v4;
+            }
+        }
+
+        return array_values(array_unique($ips));
     }
 
     /**
@@ -186,27 +210,111 @@ class Helpers {
     }
 
     /**
-     * Run $callback with an SSRF-safe redirect filter installed. Every
-     * redirection target is revalidated against validate_public_http_url().
+     * SSRF-safe replacement for download_url().
      *
-     * @template T
-     * @param callable():T $callback
-     * @return T
+     * Validates the URL, then traces the redirect chain with HEAD requests
+     * (no body), re-validating every hop against validate_public_http_url(),
+     * up to a bounded depth. The final, fully-validated URL is downloaded
+     * with redirects disabled, so even a server that redirects differently
+     * for GET than HEAD cannot steer the download into an internal address —
+     * the download simply fails instead of following.
+     *
+     * @param string $url     URL to download.
+     * @param int    $timeout Download timeout in seconds.
+     * @return string|\WP_Error Temp file path, or WP_Error on validation/download failure.
      */
-    public static function with_ssrf_guard(callable $callback) {
-        $filter = static function ($redirect_url) {
-            $check = self::validate_public_http_url((string) $redirect_url);
-            if (is_wp_error($check)) {
-                return 0; // WP HTTP API treats 0 as "do not follow".
-            }
-            return $redirect_url;
-        };
-        add_filter('http_request_redirection_url', $filter, 10, 1);
-        try {
-            return $callback();
-        } finally {
-            remove_filter('http_request_redirection_url', $filter, 10);
+    public static function safe_download_url(string $url, int $timeout = 300) {
+        $final = self::resolve_safe_url($url);
+        if (is_wp_error($final)) {
+            return $final;
         }
+
+        // Force redirection=0 for the duration of the actual download so no
+        // unvalidated hop can be followed.
+        $no_redirect = static function (array $args): array {
+            $args['redirection'] = 0;
+            return $args;
+        };
+        add_filter('http_request_args', $no_redirect);
+        try {
+            return download_url($final, $timeout);
+        } finally {
+            remove_filter('http_request_args', $no_redirect);
+        }
+    }
+
+    /**
+     * Follow (and validate) a redirect chain to its terminal URL.
+     *
+     * @param string $url      Starting URL (already syntactically trusted enough to probe).
+     * @param int    $max_hops Maximum redirects to follow.
+     * @return string|\WP_Error Final URL, or WP_Error if any hop is unsafe or the chain is too long.
+     */
+    private static function resolve_safe_url(string $url, int $max_hops = 5) {
+        $current = $url;
+
+        for ($hop = 0; $hop <= $max_hops; $hop++) {
+            $check = self::validate_public_http_url($current);
+            if (is_wp_error($check)) {
+                return $check;
+            }
+
+            $response = wp_remote_head($current, ['redirection' => 0, 'timeout' => 15]);
+            if (is_wp_error($response)) {
+                // Some origins reject HEAD; treat this URL as terminal. The
+                // final download runs with redirection=0, so an unexpected
+                // 3xx there fails safely rather than following.
+                return $current;
+            }
+
+            $code = (int) wp_remote_retrieve_response_code($response);
+            if ($code < 300 || $code >= 400) {
+                return $current;
+            }
+
+            $location = wp_remote_retrieve_header($response, 'location');
+            if (empty($location)) {
+                return new \WP_Error(
+                    'blocked_url',
+                    esc_html__('Redirect response had no Location header.', 'wp-mcp-ultimate'),
+                    ['status' => 403]
+                );
+            }
+
+            // Resolve relative redirects against the current URL.
+            if (! preg_match('#^https?://#i', $location)) {
+                $location = self::resolve_relative_url($location, $current);
+            }
+            $current = $location;
+        }
+
+        return new \WP_Error(
+            'blocked_url',
+            esc_html__('Too many redirects while fetching the URL.', 'wp-mcp-ultimate'),
+            ['status' => 403]
+        );
+    }
+
+    /**
+     * Resolve a possibly-relative redirect Location against the URL it came from.
+     *
+     * @param string $location Location header value (relative or absolute path).
+     * @param string $base     URL that returned the redirect.
+     * @return string Absolute URL.
+     */
+    private static function resolve_relative_url(string $location, string $base): string {
+        $b = wp_parse_url($base);
+        if (empty($b['scheme']) || empty($b['host'])) {
+            return $location;
+        }
+        $origin = $b['scheme'] . '://' . $b['host'] . (isset($b['port']) ? ':' . $b['port'] : '');
+
+        if (isset($location[0]) && '/' === $location[0]) {
+            return $origin . $location;
+        }
+
+        $path = isset($b['path']) ? preg_replace('#/[^/]*$#', '/', $b['path']) : '/';
+        return $origin . $path . $location;
     }
 
     /**
