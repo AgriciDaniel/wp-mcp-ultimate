@@ -121,6 +121,12 @@ class System {
 					// can grow unbounded on chatty sites; reading hundreds of
 					// MB is a DoS risk and loads PII into the response.
 					$max_bytes = (int) apply_filters( 'wp_mcp_ultimate_debug_log_max_bytes', 2 * 1024 * 1024 ); // 2 MiB
+					// Floor at 1 KiB: a filter returning 0 or a negative would
+					// otherwise make the offset swallow the whole file and
+					// return nothing while claiming "truncated to the last 0 B".
+					if ( $max_bytes < 1024 ) {
+						$max_bytes = 1024;
+					}
 					$file_size = (int) filesize( $log_file );
 					$offset    = max( 0, $file_size - $max_bytes );
 					$truncated = $offset > 0;
@@ -158,14 +164,17 @@ class System {
 						_n( 'Returned %d line', 'Returned %d lines', count( $result_lines ), 'wp-mcp-ultimate' ),
 						count( $result_lines )
 					);
+					// Build the message unescaped; it is esc_html()'d once at the
+					// return. (Escaping the parts here too would double-encode
+					// any apostrophe or ampersand in a translation.)
 					if ( $truncated ) {
 						$message .= ' ' . sprintf(
 							/* translators: %s: Human-readable byte cap, e.g. "2 MB". */
-							esc_html__( '(log truncated to the last %s — increase via the wp_mcp_ultimate_debug_log_max_bytes filter).', 'wp-mcp-ultimate' ),
+							__( '(log truncated to the last %s — increase via the wp_mcp_ultimate_debug_log_max_bytes filter).', 'wp-mcp-ultimate' ),
 							size_format( $max_bytes )
 						);
 					}
-					$message .= ' ' . esc_html__( 'Warning: debug.log often contains credentials, tokens, and PII.', 'wp-mcp-ultimate' );
+					$message .= ' ' . __( 'Warning: debug.log often contains credentials, tokens, and PII.', 'wp-mcp-ultimate' );
 
 					return array(
 						'success' => true,

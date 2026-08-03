@@ -158,7 +158,12 @@ class Options {
 					 * @param string[] $protected_options
 					 * @param string   $name Option name being updated.
 					 */
-					$protected_options = apply_filters( 'wp_mcp_ultimate_protected_options', $protected_options, $name );
+					$filtered_protected = apply_filters( 'wp_mcp_ultimate_protected_options', $protected_options, $name );
+					// A filter callback that forgets to return, or returns a
+					// non-array, would otherwise fatal in in_array() under PHP 8.
+					if ( is_array( $filtered_protected ) ) {
+						$protected_options = $filtered_protected;
+					}
 
 					if ( in_array( $name, $protected_options, true ) ) {
 						return array(

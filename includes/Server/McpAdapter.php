@@ -57,11 +57,14 @@ final class McpAdapter {
 			self::$instance = new self();
 
 			// The default category/abilities must be registered from inside the
-			// Abilities API init actions: WP 6.9+ core rejects any
-			// wp_register_ability() call made outside 'wp_abilities_api_init'
-			// (doing_action() guard), and the action can fire lazily at any
-			// point after 'init' — so the hooks have to be attached here at
-			// plugin load, never conditionally from rest_api_init.
+			// Abilities API init actions. On WP 6.9+ the abilities registry is
+			// created lazily by WP_Abilities_Registry::get_instance(), which
+			// returns null (with a _doing_it_wrong notice) until 'init' has
+			// fired and then fires 'wp_abilities_api_init' exactly once on first
+			// access. That first access can happen at any point after 'init'
+			// (core's own Connectors API, another plugin, our dashboard), so the
+			// only reliable way to register inside the action is to attach these
+			// hooks here at plugin load — never conditionally from rest_api_init.
 			add_action( 'wp_abilities_api_categories_init', array( self::$instance, 'register_default_category' ) );
 			add_action( 'wp_abilities_api_init', array( self::$instance, 'register_default_abilities' ) );
 

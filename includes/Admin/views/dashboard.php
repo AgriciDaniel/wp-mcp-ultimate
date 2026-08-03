@@ -45,11 +45,13 @@ $mcp_tool_names = [
     'wp-mcp-ultimate/get-ability-info',
     'wp-mcp-ultimate/execute-ability',
 ];
+// Use wp_has_ability(): wp_get_ability() emits a _doing_it_wrong() notice
+// on a miss, which would render mid-page next to this very status row.
 $mcp_tools_ok = null;
-if (function_exists('wp_get_ability')) {
+if (function_exists('wp_has_ability')) {
     $mcp_tools_ok = true;
     foreach ($mcp_tool_names as $mcp_tool_name) {
-        if (!wp_get_ability($mcp_tool_name)) {
+        if (!wp_has_ability($mcp_tool_name)) {
             $mcp_tools_ok = false;
             break;
         }
@@ -194,7 +196,7 @@ $base64_placeholder = 'BASE64_ENCODED_CREDENTIALS';
                 <span class="mcp-dot <?php echo $mcp_tools_ok ? 'mcp-dot-active' : 'mcp-dot-inactive'; ?>"></span>
                 <span>
                     <?php if ($mcp_tools_ok) : ?>
-                        MCP tools registered &mdash; tools/list will expose them.
+                        MCP meta-tools registered.
                     <?php else : ?>
                         MCP meta-tools failed to register &mdash; tools/list will be empty. Check the PHP error log for details.
                     <?php endif; ?>
