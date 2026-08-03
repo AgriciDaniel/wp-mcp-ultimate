@@ -341,10 +341,33 @@ class System {
 					// fall back to an in-place write.
 					if ( 'direct' === $wp_filesystem->method ) {
 						$temp_path = $wp_config_path . '.wpmcp-' . wp_generate_uuid4() . '.tmp';
-						$staged    = $wp_filesystem->put_contents( $temp_path, $content, FS_CHMOD_FILE );
+
+						// The temp file holds DB credentials + salts. Guarantee it
+						// is removed even if a fatal/timeout interrupts us between
+						// staging and rename, so secrets are never stranded in the
+						// docroot.
+						$cleanup = static function () use ( $temp_path ) {
+							if ( is_file( $temp_path ) ) {
+								// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- shutdown safety net for a secrets temp file.
+								@unlink( $temp_path );
+							}
+						};
+						add_action( 'shutdown', $cleanup );
+
+						$staged = $wp_filesystem->put_contents( $temp_path, $content, FS_CHMOD_FILE );
 						if ( false === $staged ) {
 							return array( 'success' => false, 'message' => esc_html__( 'Failed to stage wp-config.php write', 'wp-mcp-ultimate' ), 'changes' => array() );
 						}
+
+						// rename() keeps the temp file's permissions, which would
+						// silently widen a hardened wp-config.php (e.g. 0600 -> 0644).
+						// Copy the original file's mode onto the temp file first.
+						$existing_perms = @fileperms( $wp_config_path );
+						if ( false !== $existing_perms ) {
+							// phpcs:ignore WordPress.WP.AlternativeFunctions.chmod_chmod -- preserve the original wp-config.php permissions across the atomic rename.
+							@chmod( $temp_path, $existing_perms & 0777 );
+						}
+
 						// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- Atomic rename required for safe config write; direct filesystem verified above.
 						$renamed = @rename( $temp_path, $wp_config_path );
 						if ( ! $renamed ) {

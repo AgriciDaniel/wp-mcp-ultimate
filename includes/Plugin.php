@@ -36,8 +36,10 @@ final class Plugin {
             McpAdapter::instance();
         }
 
-        // Bundled OAuth 2.1 authorization server (for MCP clients that require OAuth, e.g. Claude Connectors)
-        if (class_exists(OAuthServer::class)) {
+        // Bundled OAuth 2.1 authorization server (for MCP clients that require OAuth, e.g. Claude Connectors).
+        // Filterable so a site that authenticates only via Application Passwords can turn off the
+        // public OAuth endpoints (including unauthenticated dynamic client registration) entirely.
+        if (class_exists(OAuthServer::class) && apply_filters('wp_mcp_ultimate_enable_oauth', true)) {
             OAuthServer::init();
         }
 

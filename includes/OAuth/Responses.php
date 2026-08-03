@@ -51,8 +51,21 @@ final class Responses {
 	 * Plain HTML error page for cases where redirecting back to an
 	 * unvalidated/unregistered redirect_uri would be unsafe.
 	 */
+	/**
+	 * Emit anti-framing headers. These OAuth HTML pages (consent, errors)
+	 * render outside WordPress's admin/login screens, so core's
+	 * send_frame_options_header() never runs for them. Without this an
+	 * attacker could iframe the consent screen and clickjack an admin into
+	 * approving a client.
+	 */
+	public static function send_frame_busting_headers(): void {
+		header( 'X-Frame-Options: DENY' );
+		header( "Content-Security-Policy: frame-ancestors 'none'" );
+	}
+
 	public static function html_error( string $title, string $message, int $status = 400 ): void {
 		nocache_headers();
+		self::send_frame_busting_headers();
 		status_header( $status );
 		header( 'Content-Type: text/html; charset=utf-8' );
 		echo '<!doctype html><html><head><meta charset="utf-8"><title>' . esc_html( $title ) . '</title>'

@@ -97,6 +97,7 @@ final class AuthorizationEndpoint {
 		$client_name = $client['client_name'] ?? 'This application';
 
 		nocache_headers();
+		Responses::send_frame_busting_headers();
 		header( 'Content-Type: text/html; charset=utf-8' );
 		?>
 <!doctype html>
