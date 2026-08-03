@@ -46,20 +46,43 @@ final class BearerAuth {
 		return (int) $payload['user_id'];
 	}
 
+	/**
+	 * Whether this request will actually be dispatched to the MCP REST route.
+	 *
+	 * This must mirror how WordPress resolves the route, not just what the
+	 * URL path looks like: WP::parse_request() gives $_POST/$_GET precedence
+	 * over the rewrite-derived value, so `rest_route` in the query string
+	 * overrides the pretty-permalink match. Checking only REQUEST_URI would
+	 * let `POST /wp-json/mcp/wp-mcp-ultimate?rest_route=/wp/v2/users` — which
+	 * dispatches to wp/v2 — still authenticate with an MCP-scoped token.
+	 */
 	private static function is_mcp_request(): bool {
+		$mcp_route = '/mcp/wp-mcp-ultimate';
+
+		// Same precedence WordPress applies: POST, then GET, then the URL path.
+		$rest_route = null;
+		if ( isset( $_POST['rest_route'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- routing check only, no state change.
+			$rest_route = (string) wp_unslash( $_POST['rest_route'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		} elseif ( isset( $_GET['rest_route'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing check only, no state change.
+			$rest_route = (string) wp_unslash( $_GET['rest_route'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+
+		if ( null !== $rest_route ) {
+			return 0 === strpos( $rest_route, $mcp_route );
+		}
+
+		// No rest_route override: derive the route from the path after the
+		// REST prefix, exactly as the rewrite rule would.
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
 		$path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
-
-		if ( false !== strpos( $path, '/' . rest_get_url_prefix() . '/mcp/wp-mcp-ultimate' ) ) {
-			return true;
+		$prefix      = '/' . rest_get_url_prefix() . '/';
+		$pos         = strpos( $path, $prefix );
+		if ( false === $pos ) {
+			return false;
 		}
 
-		// Plain-permalink installs route REST through ?rest_route=.
-		if ( isset( $_GET['rest_route'] ) && 0 === strpos( (string) wp_unslash( $_GET['rest_route'] ), '/mcp/wp-mcp-ultimate' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing check only, no state change.
-			return true;
-		}
-
-		return false;
+		$route = substr( $path, $pos + strlen( $prefix ) - 1 ); // Keep leading slash.
+		return 0 === strpos( $route, $mcp_route );
 	}
 
 	private static function get_authorization_header(): string {
