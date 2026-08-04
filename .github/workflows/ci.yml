@@ -56,6 +56,16 @@ jobs:
         run: |
           PASS="$(npx wp-env run cli wp user application-password create admin playwright-ci --porcelain)"
           echo "WP_APP_PASSWORD=${PASS}" >> "$GITHUB_ENV"
+      - name: (debug) dump ability mcp.public on WordPress 6.9
+        if: matrix.wp == '6.9'
+        run: |
+          npx wp-env run cli wp eval '
+            foreach ( wp_get_abilities() as $name => $a ) {
+              $m = $a->get_meta();
+              $pub = isset($m["mcp"]["public"]) ? ($m["mcp"]["public"] ? "1" : "0") : "UNSET";
+              echo $name . " => public=" . $pub . " cat=" . $a->get_category() . "\n";
+            }
+          '
       - name: Run Playwright E2E
         run: npx playwright test
       - name: Upload report on failure
