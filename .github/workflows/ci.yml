@@ -56,27 +56,6 @@ jobs:
         run: |
           PASS="$(npx wp-env run cli wp user application-password create admin playwright-ci --porcelain)"
           echo "WP_APP_PASSWORD=${PASS}" >> "$GITHUB_ENV"
-      - name: (debug) REST-context probe on WordPress 6.9
-        if: matrix.wp == '6.9'
-        run: |
-          BASE=http://localhost:8889
-          AUTH=$(printf 'admin:%s' "$WP_APP_PASSWORD" | base64 -w0)
-          hdr=(-H "Authorization: Basic $AUTH" -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream')
-          echo '--- initialize ---'
-          curl -s -D /tmp/h.txt -o /tmp/init.txt -X POST "$BASE/wp-json/mcp/wp-mcp-ultimate" "${hdr[@]}" \
-            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"dbg","version":"1"}}}'
-          SID=$(grep -i '^mcp-session-id:' /tmp/h.txt | awk '{print $2}' | tr -d '\r')
-          echo "session=$SID"
-          echo '--- get-ability-info plugins/list (fails in REST) ---'
-          curl -s -X POST "$BASE/wp-json/mcp/wp-mcp-ultimate" "${hdr[@]}" -H "Mcp-Session-Id: $SID" \
-            -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"wp-mcp-ultimate-get-ability-info","arguments":{"ability_name":"plugins/list"}}}'; echo
-          echo '--- get-ability-info options/get (passes in REST) ---'
-          curl -s -X POST "$BASE/wp-json/mcp/wp-mcp-ultimate" "${hdr[@]}" -H "Mcp-Session-Id: $SID" \
-            -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"wp-mcp-ultimate-get-ability-info","arguments":{"ability_name":"plugins/list","dummy":1}}}'; echo
-          echo '--- discover-abilities: is plugins/list present in REST? ---'
-          curl -s -X POST "$BASE/wp-json/mcp/wp-mcp-ultimate" "${hdr[@]}" -H "Mcp-Session-Id: $SID" \
-            -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"wp-mcp-ultimate-discover-abilities","arguments":{}}}' \
-            | tr ',' '\n' | grep -i 'plugins/' || echo 'no plugins/* in discover output'
       - name: Run Playwright E2E
         run: npx playwright test
       - name: Upload report on failure
