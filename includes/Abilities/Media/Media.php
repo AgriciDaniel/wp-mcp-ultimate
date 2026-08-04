@@ -183,10 +183,18 @@ class Media {
 					// Load WordPress admin includes for media_handle_sideload().
 					Helpers::load_admin_includes();
 
+					// Validate URL scheme/host and every resolved IP to prevent
+					// SSRF to internal services or cloud metadata endpoints.
+					$ssrf = Helpers::validate_public_http_url( (string) $input['url'] );
+					if ( is_wp_error( $ssrf ) ) {
+						return array( 'success' => false, 'message' => esc_html( $ssrf->get_error_message() ) );
+					}
+
 					$post_id = $input['post_id'] ?? 0;
 
-					// Download file to temp location.
-					$tmp = download_url( $input['url'] );
+					// Download with every redirect hop re-validated and no
+					// unvalidated redirect followed on the final fetch.
+					$tmp = Helpers::safe_download_url( (string) $input['url'] );
 					if ( is_wp_error( $tmp ) ) {
 						/* translators: %s: Error message */
 						return array( 'success' => false, 'message' => esc_html( $tmp->get_error_message() ) );

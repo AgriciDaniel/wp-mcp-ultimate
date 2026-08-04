@@ -78,6 +78,8 @@ class Ajax {
         wp_send_json_success(['message' => 'API key revoked.']);
     }
 
+    private const TEST_PASSWORD_NAME = 'WP MCP Ultimate (connection test)';
+
     public static function test_connection(): void {
         check_ajax_referer('wp-mcp-ultimate', 'nonce');
 
@@ -99,7 +101,12 @@ class Ajax {
         foreach ($passwords as $pass) {
             if ($pass['uuid'] === $uuid) {
                 $app_pass = $pass;
-                break;
+            }
+
+            // Clean up a temp password left behind by an interrupted test —
+            // names are unique, so a leftover would block creating a new one.
+            if ($pass['name'] === self::TEST_PASSWORD_NAME) {
+                WP_Application_Passwords::delete_application_password($user_id, $pass['uuid']);
             }
         }
 
@@ -108,26 +115,67 @@ class Ajax {
             wp_send_json_error(['message' => 'Application password not found. Please generate a new key.']);
         }
 
-        // Self-request to REST API to verify it's reachable.
-        $response = wp_remote_get(
+        // The stored key's plaintext only existed at creation time, so it
+        // cannot be replayed here. Instead, create a short-lived password,
+        // run a real MCP initialize call through it, and delete it — this
+        // exercises routing, Basic auth, and Authorization-header
+        // pass-through exactly like an external client would.
+        $created = WP_Application_Passwords::create_new_application_password(
+            $user_id,
+            ['name' => self::TEST_PASSWORD_NAME]
+        );
+
+        if (is_wp_error($created)) {
+            wp_send_json_error(['message' => 'Could not create a temporary test password: ' . $created->get_error_message()]);
+        }
+
+        [$test_password, $test_item] = $created;
+
+        $response = wp_remote_post(
             rest_url('mcp/wp-mcp-ultimate'),
             [
                 'headers'   => [
-                    'Authorization' => 'Basic ' . base64_encode($user->user_login . ':' . $uuid),
+                    'Authorization' => 'Basic ' . base64_encode($user->user_login . ':' . $test_password),
+                    'Content-Type'  => 'application/json',
+                    'Accept'        => 'application/json, text/event-stream',
                 ],
+                'body'      => wp_json_encode([
+                    'jsonrpc' => '2.0',
+                    'id'      => 1,
+                    'method'  => 'initialize',
+                    'params'  => [
+                        'protocolVersion' => '2025-06-18',
+                        'capabilities'    => new \stdClass(),
+                        'clientInfo'      => [
+                            'name'    => 'wp-mcp-ultimate-connection-test',
+                            'version' => WP_MCP_ULTIMATE_VERSION,
+                        ],
+                    ],
+                ]),
                 'timeout'   => 10,
-                'sslverify' => false,
+                'sslverify' => false, // Loopback request; local certs are often self-signed.
             ]
         );
+
+        // wp_send_json_* exits, so the temp password must be gone first.
+        WP_Application_Passwords::delete_application_password($user_id, $test_item['uuid']);
 
         if (is_wp_error($response)) {
             wp_send_json_error(['message' => 'Connection failed: ' . $response->get_error_message()]);
         }
 
         $code = wp_remote_retrieve_response_code($response);
+        $body = json_decode(wp_remote_retrieve_body($response), true);
 
-        if ($code >= 200 && $code < 400) {
-            wp_send_json_success(['message' => 'Connection successful.', 'status' => $code]);
+        if ($code === 200 && isset($body['result']['serverInfo'])) {
+            wp_send_json_success(['message' => 'Connection successful. MCP server responded to initialize.', 'status' => $code]);
+        }
+
+        if ($code === 401 || $code === 403) {
+            wp_send_json_error([
+                'message' => 'Authentication failed (HTTP ' . $code . '). Your server may be stripping the Authorization header before it reaches WordPress (common on Apache/FastCGI hosts). Add this to your .htaccess: RewriteEngine On / RewriteCond %{HTTP:Authorization} ^(.*) / RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]',
+                'status'  => $code,
+            ]);
         }
 
         wp_send_json_error([

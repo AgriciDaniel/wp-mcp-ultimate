@@ -545,6 +545,13 @@ class Pages {
 						return array( 'success' => false, 'message' => esc_html__( 'Page not found', 'wp-mcp-ultimate' ) );
 					}
 
+					// Per-page capability check: the blanket 'delete_pages'
+					// guards the route, but the object-level map-meta cap
+					// decides who can delete *this particular* page.
+					if ( ! current_user_can( 'delete_page', (int) $input['id'] ) ) {
+						return array( 'success' => false, 'message' => esc_html__( 'You are not allowed to delete this page.', 'wp-mcp-ultimate' ) );
+					}
+
 					$force  = ! empty( $input['force'] );
 					$result = wp_delete_post( $input['id'], $force );
 
@@ -634,6 +641,13 @@ class Pages {
 						return array( 'success' => false, 'message' => esc_html__( 'Page not found', 'wp-mcp-ultimate' ) );
 					}
 
+					// Per-page capability check: the blanket 'edit_pages' cap
+					// guards the route, but map-meta 'edit_page' decides
+					// whether the current user can edit *this* page.
+					if ( ! current_user_can( 'edit_page', (int) $input['id'] ) ) {
+						return array( 'success' => false, 'message' => esc_html__( 'You are not allowed to edit this page.', 'wp-mcp-ultimate' ) );
+					}
+
 					$content   = $page->post_content;
 					$find      = $input['find'];
 					$replace   = $input['replace'];
@@ -642,10 +656,12 @@ class Pages {
 					$count     = 0;
 
 					if ( $use_regex ) {
-						$new_content = preg_replace( $find, $replace, $content, -1, $count );
-						if ( null === $new_content ) {
-							return array( 'success' => false, 'message' => esc_html__( 'Invalid regex pattern', 'wp-mcp-ultimate' ) );
+						$guarded = Helpers::guarded_preg_replace( (string) $find, (string) $replace, $content );
+						if ( ! $guarded['success'] ) {
+							return array( 'success' => false, 'message' => $guarded['message'] );
 						}
+						$new_content = $guarded['content'];
+						$count       = $guarded['count'];
 					} else {
 						if ( -1 === $limit ) {
 							$new_content = str_replace( $find, $replace, $content, $count );

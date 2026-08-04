@@ -96,14 +96,14 @@ class HttpTransport implements McpRestTransportInterface {
 				$this->request_handler->transport_context->error_handler->log( 'Error in transport permission callback: ' . $e->getMessage(), array( 'HttpTransport::check_permission' ) );
 			}
 		}
-		$user_capability = apply_filters( 'mcp_adapter_default_transport_permission_user_capability', 'read', $context );
+		$user_capability = apply_filters( 'mcp_adapter_default_transport_permission_user_capability', 'edit_posts', $context );
 
 		// Validate that the filtered capability is a non-empty string
 		if ( ! is_string( $user_capability ) || empty( $user_capability ) ) {
-			$user_capability = 'read';
+			$user_capability = 'edit_posts';
 		}
 
-		$user_has_capability = current_user_can( $user_capability ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is filtered and defaults to 'read'
+		$user_has_capability = current_user_can( $user_capability ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is filtered and defaults to 'edit_posts'
 
 		if ( ! $user_has_capability ) {
 			$user_id = get_current_user_id();

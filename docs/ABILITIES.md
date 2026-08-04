@@ -34,6 +34,8 @@ WP MCP Ultimate provides **58 abilities** across **9 domains**. All abilities ar
 | `content/delete-post` | Delete Post | `delete_posts` |
 | `content/patch-post` | Patch Post Content | `edit_posts` |
 
+`content/create-post` and `content/update-post` accept `featured_media` (an image attachment ID, e.g. from `media/upload`) to set the post's featured image; on update, `featured_media: 0` removes it.
+
 ## Content - Pages
 
 | Ability | Label | Capability |

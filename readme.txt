@@ -2,25 +2,26 @@
 Contributors: agricidaniel
 Tags: mcp, ai, claude, model-context-protocol, automation
 Requires at least: 6.7
-Tested up to: 6.8
-Stable tag: 2.0.0
+Tested up to: 7.0
+Stable tag: 2.1.0
 Requires PHP: 8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
-Connect WordPress to AI in one click. Full MCP server with 57 abilities.
+Connect WordPress to AI in one click. Full MCP server with 58 abilities.
 
 == Description ==
 
-WP MCP Ultimate is a self-contained MCP (Model Context Protocol) server plugin for WordPress. It provides 57 abilities that let any MCP-compatible AI client manage your WordPress site -- posts, pages, media, users, plugins, menus, widgets, comments, options, and system settings.
+WP MCP Ultimate is a self-contained MCP (Model Context Protocol) server plugin for WordPress. It provides 58 abilities that let any MCP-compatible AI client manage your WordPress site -- posts, pages, media, users, plugins, menus, widgets, comments, options, and system settings.
 
 This plugin combines the functionality of MCP Adapter, MCP Expose Abilities, and Abilities API into a single install. No other plugins are needed.
 
 Key features:
 
-* 57 WordPress abilities organized across 9 domains
+* 58 WordPress abilities organized across 9 domains
 * MCP protocol v2025-06-18 with SSE transport
-* Admin dashboard with API key generation
+* Application Password auth, plus a bundled OAuth 2.1 server for Claude Web/Mobile connectors
+* Admin dashboard with API key generation and connection testing
 * Config export for Claude Code, Claude Desktop, and Cursor
 * Conflict detection for legacy MCP plugins
 * Abilities API polyfill for WordPress < 6.9
@@ -54,6 +55,16 @@ HTTPS is strongly recommended for production use since API credentials are trans
 Different abilities require different WordPress capabilities. For example, content abilities require `edit_posts`, user abilities require `list_users` or `edit_users`, and system abilities require `manage_options`. See the full abilities reference in docs/ABILITIES.md.
 
 == Changelog ==
+
+= 2.1.0 =
+* Fixed tools/list returning an empty array on WordPress 6.9+/7.0 (meta-abilities were registered outside wp_abilities_api_init, which core now rejects)
+* Fixed Test Connection always returning 401 (it sent the Application Password UUID instead of a real credential; now performs a real MCP initialize round-trip with a temporary password)
+* Fixed execute-ability rejecting stringified JSON parameters from Claude Code/Cowork clients with -32602
+* Added featured_media parameter to content/create-post and content/update-post (0 removes the featured image on update)
+* Added bundled OAuth 2.1 authorization server with PKCE and dynamic client registration for Claude Web/Mobile connectors (thanks @dandumit), with endpoint namespacing, registration rate limits, and MCP-scoped bearer tokens
+* Security hardening (thanks @roboweaver): default MCP capability raised from read to edit_posts (filterable), per-object capability checks on patch/delete, ReDoS guards on regex patch, SSRF validation for URL fetches, plugin install activate/overwrite now default to false, system/toggle-debug disabled by default (opt-in filter), debug-log reads capped
+* Admin dashboard now shows real MCP tool registration status
+* Documented Apache Authorization-header stripping (.htaccess fix) and local TLS certificate troubleshooting
 
 = 2.0.0 =
 * Merged best implementations from MCP Expose Abilities v3.0.17 (Bjorn Solstad) and WP MCP Ultimate v1.0.0

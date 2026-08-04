@@ -136,7 +136,34 @@ class Options {
 						'recently_activated',       // Plugin state tracking.
 						'uninstall_plugins',        // Plugin cleanup callbacks.
 						'wp_user_roles',            // Security: role definitions.
+						'template',                 // Active theme — swap would bypass theme-install auth.
+						'stylesheet',               // Active stylesheet — same as above.
+						'current_theme',            // Theme identifier cached by WP.
+						'WPLANG',                   // Site language — can flip admin UI.
+						'auth_key',                 // Secret keys (shouldn't be in DB, but defensive).
+						'auth_salt',
+						'secure_auth_key',
+						'secure_auth_salt',
+						'logged_in_key',
+						'logged_in_salt',
+						'nonce_key',
+						'nonce_salt',
 					);
+
+					/**
+					 * Filter the list of options that cannot be modified via
+					 * the MCP options/update ability. Extend to add
+					 * site-specific secrets.
+					 *
+					 * @param string[] $protected_options
+					 * @param string   $name Option name being updated.
+					 */
+					$filtered_protected = apply_filters( 'wp_mcp_ultimate_protected_options', $protected_options, $name );
+					// A filter callback that forgets to return, or returns a
+					// non-array, would otherwise fatal in in_array() under PHP 8.
+					if ( is_array( $filtered_protected ) ) {
+						$protected_options = $filtered_protected;
+					}
 
 					if ( in_array( $name, $protected_options, true ) ) {
 						return array(

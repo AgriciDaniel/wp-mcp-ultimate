@@ -117,10 +117,37 @@ class System {
 					$num_lines = isset( $input['lines'] ) ? min( max( 1, (int) $input['lines'] ), 500 ) : 50;
 					$filter    = isset( $input['filter'] ) ? $input['filter'] : '';
 
-					// Read file from end
-					$file_content = file_get_contents( $log_file );
-					$all_lines    = explode( "\n", $file_content );
-					$all_lines    = array_filter( $all_lines, function( $line ) { return trim( $line ) !== ''; } );
+					// Cap how much of the log we read into memory. debug.log
+					// can grow unbounded on chatty sites; reading hundreds of
+					// MB is a DoS risk and loads PII into the response.
+					$max_bytes = (int) apply_filters( 'wp_mcp_ultimate_debug_log_max_bytes', 2 * 1024 * 1024 ); // 2 MiB
+					// Floor at 1 KiB: a filter returning 0 or a negative would
+					// otherwise make the offset swallow the whole file and
+					// return nothing while claiming "truncated to the last 0 B".
+					if ( $max_bytes < 1024 ) {
+						$max_bytes = 1024;
+					}
+					$file_size = (int) filesize( $log_file );
+					$offset    = max( 0, $file_size - $max_bytes );
+					$truncated = $offset > 0;
+
+					$handle = @fopen( $log_file, 'rb' );
+					if ( false === $handle ) {
+						return array( 'success' => false, 'message' => esc_html__( 'Failed to open debug log', 'wp-mcp-ultimate' ), 'lines' => array() );
+					}
+					if ( $offset > 0 ) {
+						@fseek( $handle, $offset );
+						// Skip partial line at the start.
+						@fgets( $handle );
+					}
+					$file_content = stream_get_contents( $handle );
+					@fclose( $handle );
+					if ( false === $file_content ) {
+						return array( 'success' => false, 'message' => esc_html__( 'Failed to read debug log', 'wp-mcp-ultimate' ), 'lines' => array() );
+					}
+
+					$all_lines = explode( "\n", $file_content );
+					$all_lines = array_filter( $all_lines, function( $line ) { return trim( $line ) !== ''; } );
 
 					// Apply filter if specified
 					if ( ! empty( $filter ) ) {
@@ -132,11 +159,27 @@ class System {
 					// Get last N lines
 					$result_lines = array_slice( $all_lines, -$num_lines );
 
+					$message = sprintf(
+						/* translators: %d: Number of lines returned. */
+						_n( 'Returned %d line', 'Returned %d lines', count( $result_lines ), 'wp-mcp-ultimate' ),
+						count( $result_lines )
+					);
+					// Build the message unescaped; it is esc_html()'d once at the
+					// return. (Escaping the parts here too would double-encode
+					// any apostrophe or ampersand in a translation.)
+					if ( $truncated ) {
+						$message .= ' ' . sprintf(
+							/* translators: %s: Human-readable byte cap, e.g. "2 MB". */
+							__( '(log truncated to the last %s — increase via the wp_mcp_ultimate_debug_log_max_bytes filter).', 'wp-mcp-ultimate' ),
+							size_format( $max_bytes )
+						);
+					}
+					$message .= ' ' . __( 'Warning: debug.log often contains credentials, tokens, and PII.', 'wp-mcp-ultimate' );
+
 					return array(
 						'success' => true,
 						'lines'   => array_values( $result_lines ),
-						/* translators: %d: Number of lines returned. */
-						'message' => esc_html( sprintf( _n( 'Returned %d line', 'Returned %d lines', count( $result_lines ), 'wp-mcp-ultimate' ), count( $result_lines ) ) ),
+						'message' => esc_html( $message ),
 					);
 				},
 				'permission_callback' => function (): bool {
@@ -190,6 +233,23 @@ class System {
 				),
 				'execute_callback'    => function ( $input = array() ): array {
 					$input = is_array( $input ) ? $input : array();
+
+					/**
+					 * Gate for the toggle-debug ability.
+					 *
+					 * This ability rewrites wp-config.php via regex and is
+					 * high blast-radius. It is DISABLED by default; opt in
+					 * with add_filter('wp_mcp_ultimate_allow_toggle_debug', '__return_true').
+					 *
+					 * @param bool $allowed Whether the ability is allowed.
+					 */
+					if ( ! apply_filters( 'wp_mcp_ultimate_allow_toggle_debug', false ) ) {
+						return array(
+							'success' => false,
+							'message' => esc_html__( 'system/toggle-debug is disabled by default. Enable it with the wp_mcp_ultimate_allow_toggle_debug filter if you want to let the MCP server modify wp-config.php.', 'wp-mcp-ultimate' ),
+							'changes' => array(),
+						);
+					}
 
 					Helpers::load_admin_includes();
 
@@ -282,10 +342,52 @@ class System {
 						}
 					}
 
-					// Write changes
-					$result = $wp_filesystem->put_contents( $wp_config_path, $content, FS_CHMOD_FILE );
-					if ( false === $result ) {
-						return array( 'success' => false, 'message' => esc_html__( 'Failed to write wp-config.php', 'wp-mcp-ultimate' ), 'changes' => array() );
+					// Atomic write: stage the new content to a sibling temp
+					// file, then rename over wp-config.php. This avoids a
+					// truncated wp-config.php if the process is interrupted.
+					// Only possible on the 'direct' filesystem — a PHP rename()
+					// cannot move files staged over FTP/SSH, so those setups
+					// fall back to an in-place write.
+					if ( 'direct' === $wp_filesystem->method ) {
+						$temp_path = $wp_config_path . '.wpmcp-' . wp_generate_uuid4() . '.tmp';
+
+						// The temp file holds DB credentials + salts. Guarantee it
+						// is removed even if a fatal/timeout interrupts us between
+						// staging and rename, so secrets are never stranded in the
+						// docroot.
+						$cleanup = static function () use ( $temp_path ) {
+							if ( is_file( $temp_path ) ) {
+								// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- shutdown safety net for a secrets temp file.
+								@unlink( $temp_path );
+							}
+						};
+						add_action( 'shutdown', $cleanup );
+
+						$staged = $wp_filesystem->put_contents( $temp_path, $content, FS_CHMOD_FILE );
+						if ( false === $staged ) {
+							return array( 'success' => false, 'message' => esc_html__( 'Failed to stage wp-config.php write', 'wp-mcp-ultimate' ), 'changes' => array() );
+						}
+
+						// rename() keeps the temp file's permissions, which would
+						// silently widen a hardened wp-config.php (e.g. 0600 -> 0644).
+						// Copy the original file's mode onto the temp file first.
+						$existing_perms = @fileperms( $wp_config_path );
+						if ( false !== $existing_perms ) {
+							// phpcs:ignore WordPress.WP.AlternativeFunctions.chmod_chmod -- preserve the original wp-config.php permissions across the atomic rename.
+							@chmod( $temp_path, $existing_perms & 0777 );
+						}
+
+						// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- Atomic rename required for safe config write; direct filesystem verified above.
+						$renamed = @rename( $temp_path, $wp_config_path );
+						if ( ! $renamed ) {
+							$wp_filesystem->delete( $temp_path );
+							return array( 'success' => false, 'message' => esc_html__( 'Failed to write wp-config.php', 'wp-mcp-ultimate' ), 'changes' => array() );
+						}
+					} else {
+						$written = $wp_filesystem->put_contents( $wp_config_path, $content, FS_CHMOD_FILE );
+						if ( false === $written ) {
+							return array( 'success' => false, 'message' => esc_html__( 'Failed to write wp-config.php', 'wp-mcp-ultimate' ), 'changes' => array() );
+						}
 					}
 
 					return array(

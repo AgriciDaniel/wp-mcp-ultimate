@@ -12,7 +12,7 @@
  * Plugin URI:        https://github.com/agricidaniel/wp-mcp-ultimate
  * Description:       Connect WordPress to AI in one click. Full MCP server with 57 WordPress abilities — no other plugins needed. Forged from MCP Expose Abilities (Bjorn Solstad) and WP MCP Ultimate architectures.
  * Requires at least: 6.7
- * Version:           2.0.0
+ * Version:           2.1.0
  * Requires PHP:      8.0
  * Author:            agricidaniel
  * Author URI:        https://github.com/agricidaniel
@@ -29,7 +29,7 @@ defined('ABSPATH') || exit();
 
 define('WP_MCP_ULTIMATE_DIR', plugin_dir_path(__FILE__));
 define('WP_MCP_ULTIMATE_URL', plugin_dir_url(__FILE__));
-define('WP_MCP_ULTIMATE_VERSION', '2.0.0');
+define('WP_MCP_ULTIMATE_VERSION', '2.1.0');
 
 require_once __DIR__ . '/includes/Autoloader.php';
 

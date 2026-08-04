@@ -7,6 +7,7 @@ use WpMcpUltimate\Server\McpAdapter;
 use WpMcpUltimate\Abilities\Registry;
 use WpMcpUltimate\Admin\Ajax;
 use WpMcpUltimate\Admin\Dashboard;
+use WpMcpUltimate\OAuth\Server as OAuthServer;
 
 final class Plugin {
     private static self $instance;
@@ -33,6 +34,13 @@ final class Plugin {
         // Initialize MCP server
         if (class_exists(McpAdapter::class)) {
             McpAdapter::instance();
+        }
+
+        // Bundled OAuth 2.1 authorization server (for MCP clients that require OAuth, e.g. Claude Connectors).
+        // Filterable so a site that authenticates only via Application Passwords can turn off the
+        // public OAuth endpoints (including unauthenticated dynamic client registration) entirely.
+        if (class_exists(OAuthServer::class) && apply_filters('wp_mcp_ultimate_enable_oauth', true)) {
+            OAuthServer::init();
         }
 
         // Admin dashboard and AJAX handlers

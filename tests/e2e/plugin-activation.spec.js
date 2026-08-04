@@ -19,12 +19,12 @@ test.describe('Plugin Activation & Admin', () => {
 		await expect(deactivateLink).toBeVisible();
 	});
 
-	test('plugin version is 2.0.0', async ({ page, baseURL }) => {
+	test('plugin version is 2.1.0', async ({ page, baseURL }) => {
 		await page.goto(`${baseURL}/wp-admin/plugins.php`);
 
 		const pluginRow = page.locator('[data-slug="wp-mcp-ultimate"]');
 		const versionText = await pluginRow.locator('.plugin-version-author-uri').textContent();
-		expect(versionText).toContain('2.0.0');
+		expect(versionText).toContain('2.1.0');
 	});
 
 	test('MCP Ultimate dashboard page loads under Tools menu', async ({ page, baseURL }) => {

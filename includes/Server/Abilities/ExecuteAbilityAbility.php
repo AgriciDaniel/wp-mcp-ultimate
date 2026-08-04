@@ -44,8 +44,8 @@ final class ExecuteAbilityAbility {
 							'description' => 'The full name of the ability to execute',
 						),
 						'parameters'   => array(
-							'type'        => 'object',
-							'description' => 'Parameters to pass to the ability',
+							'type'        => array( 'object', 'string' ),
+							'description' => 'Parameters to pass to the ability, as a JSON object or a JSON-encoded object string',
 						),
 					),
 					'required'             => array( 'ability_name', 'parameters' ),
@@ -115,7 +115,10 @@ final class ExecuteAbilityAbility {
 		}
 
 		// Check if the user has permission to execute the target ability
-		$parameters        = empty( $input['parameters'] ) ? null : $input['parameters'];
+		$parameters = self::normalize_parameters( $input['parameters'] ?? null );
+		if ( is_wp_error( $parameters ) ) {
+			return $parameters;
+		}
 		$permission_result = $ability->check_permissions( $parameters );
 
 		// Return WP_Error as-is, or convert other values to boolean
@@ -124,6 +127,38 @@ final class ExecuteAbilityAbility {
 		}
 
 		return (bool) $permission_result;
+	}
+
+	/**
+	 * Normalize the `parameters` argument to an array or null.
+	 *
+	 * Several MCP clients (Claude Code, Claude Cowork) serialize the nested
+	 * `parameters` object as a JSON string, so a string value is decoded
+	 * rather than rejected. An undecodable string is a hard error — passing
+	 * it through would fail later in the target ability with a worse message.
+	 *
+	 * @param mixed $parameters Raw `parameters` input value.
+	 *
+	 * @return array|null|\WP_Error Decoded parameters, null if empty, or WP_Error for invalid JSON strings.
+	 */
+	private static function normalize_parameters( $parameters ) {
+		if ( is_string( $parameters ) ) {
+			$decoded = json_decode( $parameters, true );
+			if ( ! is_array( $decoded ) ) {
+				return new \WP_Error(
+					'invalid_parameters',
+					'The parameters argument was sent as a string but is not a valid JSON object. Send a JSON object, or a JSON-encoded object string.'
+				);
+			}
+			$parameters = $decoded;
+		}
+
+		// Empty params must be an empty object, not null: WordPress 6.9+ core
+		// validates the input against the target ability's input_schema
+		// (type: object) before running it, and null fails that check with
+		// "input is not of type object". An empty array satisfies rest_is_object
+		// and lets abilities with all-optional params run with no arguments.
+		return empty( $parameters ) ? array() : $parameters;
 	}
 
 	/**
@@ -138,7 +173,7 @@ final class ExecuteAbilityAbility {
 		}
 
 		// Check basic capability requirement - allow customization via filter
-		$required_capability = apply_filters( 'wp_mcp_ultimate_execute_ability_capability', 'read' );
+		$required_capability = apply_filters( 'wp_mcp_ultimate_execute_ability_capability', 'edit_posts' );
 		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is determined dynamically via filter
 		if ( ! current_user_can( $required_capability ) ) {
 			return new \WP_Error(
@@ -161,7 +196,14 @@ final class ExecuteAbilityAbility {
 	 */
 	public static function execute( $input = array() ): array {
 		$ability_name = $input['ability_name'] ?? '';
-		$parameters   = empty( $input['parameters'] ) ? null : $input['parameters'];
+		$parameters   = self::normalize_parameters( $input['parameters'] ?? null );
+
+		if ( is_wp_error( $parameters ) ) {
+			return array(
+				'success' => false,
+				'error'   => $parameters->get_error_message(),
+			);
+		}
 
 		if ( empty( $ability_name ) ) {
 			return array(
