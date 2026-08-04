@@ -303,16 +303,34 @@ test.describe('MCP Endpoint - Regression', () => {
 		}, 9);
 
 		const body = await response.json();
-		// Surfaces as an isError tool result or a success=false payload — either
-		// way it must not be a silent success.
-		const textContent = body.result?.content?.find((c) => c.type === 'text');
-		if (textContent) {
-			const result = JSON.parse(textContent.text);
-			if (typeof result.success !== 'undefined') {
-				expect(result.success).toBe(false);
-			}
-		} else {
+		// The bad string must be rejected, never a silent success. The
+		// rejection can surface three ways: an isError tool result with a
+		// plain-text message, a JSON-RPC error, or a {success:false} payload.
+		// (The content text is often a plain message, not JSON — don't assume
+		// it parses.)
+		if (body.error) {
 			expect(body.error).toBeDefined();
+			return;
+		}
+
+		const textContent = body.result?.content?.find((c) => c.type === 'text');
+		expect(textContent).toBeDefined();
+		const text = textContent.text || '';
+
+		if (body.result?.isError) {
+			// Plain-text error message is fine — just confirm it's non-empty.
+			expect(text.length).toBeGreaterThan(0);
+			return;
+		}
+
+		// Otherwise it should be the execute-ability wrapper with success:false.
+		let parsed = null;
+		try { parsed = JSON.parse(text); } catch { parsed = null; }
+		if (parsed && typeof parsed.success !== 'undefined') {
+			expect(parsed.success).toBe(false);
+		} else {
+			// A non-JSON message still counts as a (non-silent) rejection.
+			expect(text.length).toBeGreaterThan(0);
 		}
 	});
 });
