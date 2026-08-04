@@ -37,14 +37,9 @@ trait McpAbilityHelperTrait {
 		$is_public_mcp = $meta['mcp']['public'] ?? false;
 
 		if ( ! $is_public_mcp ) {
-			// TEMP DIAGNOSTIC (WP 6.9 plugins/list execute vs get-info split):
-			// embed the observed meta + caller in the message so it surfaces in
-			// the HTTP response the test can read (debug.log isn't reachable from
-			// wp-env's cli container).
-			$caller = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 5 )[4]['class'] ?? '?';
 			return new \WP_Error(
 				'ability_not_public_mcp',
-				sprintf( 'Ability "%s" is not exposed via MCP (mcp.public!=true) [DIAG caller=%s meta=%s]', $ability_name, $caller, wp_json_encode( $meta ) )
+				sprintf( 'Ability "%s" is not exposed via MCP (mcp.public!=true)', $ability_name )
 			);
 		}
 

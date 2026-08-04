@@ -153,7 +153,12 @@ final class ExecuteAbilityAbility {
 			$parameters = $decoded;
 		}
 
-		return empty( $parameters ) ? null : $parameters;
+		// Empty params must be an empty object, not null: WordPress 6.9+ core
+		// validates the input against the target ability's input_schema
+		// (type: object) before running it, and null fails that check with
+		// "input is not of type object". An empty array satisfies rest_is_object
+		// and lets abilities with all-optional params run with no arguments.
+		return empty( $parameters ) ? array() : $parameters;
 	}
 
 	/**

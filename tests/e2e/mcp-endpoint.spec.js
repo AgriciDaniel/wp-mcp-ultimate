@@ -254,7 +254,6 @@ test.describe('MCP Endpoint - Tool Execution', () => {
 		const textContent = content?.find((c) => c.type === 'text');
 		expect(textContent).toBeDefined();
 
-		console.log('DIAG plugins/list raw text:', textContent.text);
 		const result = JSON.parse(textContent.text);
 		expect(result.success).toBe(true);
 		// plugins/list returns {plugins: [...], total: N} wrapped in data
