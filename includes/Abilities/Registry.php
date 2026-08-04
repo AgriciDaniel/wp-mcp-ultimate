@@ -58,21 +58,42 @@ final class Registry {
 	 * @since 1.0.0
 	 */
 	public static function register_categories(): void {
-		wp_register_ability_category(
-			'site',
-			array(
-				'label'       => __( 'Site Management', 'wp-mcp-ultimate' ),
-				'description' => __( 'Abilities for managing site content, media, plugins, menus, widgets, options, and system settings.', 'wp-mcp-ultimate' ),
-			)
-		);
+		// WordPress 6.9+ core already registers 'site' and 'user' categories;
+		// re-registering triggers a _doing_it_wrong() notice on every request.
+		// Only register the ones that are missing.
+		if ( ! self::category_exists( 'site' ) ) {
+			wp_register_ability_category(
+				'site',
+				array(
+					'label'       => __( 'Site Management', 'wp-mcp-ultimate' ),
+					'description' => __( 'Abilities for managing site content, media, plugins, menus, widgets, options, and system settings.', 'wp-mcp-ultimate' ),
+				)
+			);
+		}
 
-		wp_register_ability_category(
-			'user',
-			array(
-				'label'       => __( 'User Management', 'wp-mcp-ultimate' ),
-				'description' => __( 'Abilities for managing WordPress users and their roles.', 'wp-mcp-ultimate' ),
-			)
-		);
+		if ( ! self::category_exists( 'user' ) ) {
+			wp_register_ability_category(
+				'user',
+				array(
+					'label'       => __( 'User Management', 'wp-mcp-ultimate' ),
+					'description' => __( 'Abilities for managing WordPress users and their roles.', 'wp-mcp-ultimate' ),
+				)
+			);
+		}
+	}
+
+	/**
+	 * Whether an ability category is already registered.
+	 *
+	 * Uses wp_has_ability_category() where available (core 6.9+ and the
+	 * bundled polyfill both provide it); returns false otherwise so
+	 * registration still proceeds.
+	 *
+	 * @param string $slug Category slug.
+	 * @return bool
+	 */
+	private static function category_exists( string $slug ): bool {
+		return function_exists( 'wp_has_ability_category' ) && wp_has_ability_category( $slug );
 	}
 
 	/**

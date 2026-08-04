@@ -46,8 +46,12 @@ jobs:
         env:
           WP_ENV_CORE: WordPress/WordPress#${{ matrix.wp }}
         run: npx wp-env start
-      - name: Enable pretty permalinks (required for OAuth / .well-known routing)
-        run: npx wp-env run cli wp rewrite structure '/%postname%/'
+      - name: Enable pretty permalinks (required for REST + OAuth/.well-known routing)
+        # --hard regenerates .htaccess so Apache routes /wp-json/, /.well-known/,
+        # and /wp-mcp-oauth/ to index.php; a soft flush only updates the option.
+        run: |
+          npx wp-env run cli wp rewrite structure '/%postname%/' --hard
+          npx wp-env run cli wp rewrite flush --hard
       - name: Create application password for MCP auth tests
         run: |
           PASS="$(npx wp-env run cli wp user application-password create admin playwright-ci --porcelain)"

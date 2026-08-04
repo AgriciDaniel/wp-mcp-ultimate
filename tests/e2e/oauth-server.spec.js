@@ -80,19 +80,17 @@ test.describe('OAuth - Security invariants', () => {
 		}
 	});
 
-	// Regression for the bearer-scope bypass (B2): a token (even a bogus one)
-	// presented against the MCP path but with ?rest_route= pointing elsewhere
-	// must NOT be honored for that other route. We assert the wp/v2 route is
-	// not authenticated by the bearer (i.e. behaves as anonymous / not 200
-	// via the token). A random token can never grant access; this guards that
-	// the routing check can't be tricked into treating wp/v2 as MCP.
+	// Regression for the bearer-scope bypass (B2): a bearer presented against
+	// the MCP path but with ?rest_route= pointing at a privileged endpoint must
+	// not be treated as authenticating that endpoint. /wp/v2/settings requires
+	// manage_options and is always 401 for an anonymous caller — so it stays
+	// 401 here, confirming the bogus token was not honored on the overridden
+	// route (the old substring check would have run our bearer resolver for it).
 	test('bearer token does not leak to wp/v2 via ?rest_route override', async ({ request, baseURL }) => {
 		const response = await request.get(
-			`${baseURL}/wp-json/mcp/wp-mcp-ultimate?rest_route=/wp/v2/users`,
+			`${baseURL}/wp-json/mcp/wp-mcp-ultimate?rest_route=/wp/v2/settings`,
 			{ headers: { Authorization: 'Bearer 00000000000000000000000000000000' } }
 		);
-		// wp/v2/users without a real logged-in user is not publicly listable;
-		// the bogus bearer must not authenticate it. Never a 200 OK list.
-		expect(response.status()).not.toBe(200);
+		expect(response.status()).toBe(401);
 	});
 });
