@@ -58,11 +58,6 @@ jobs:
           echo "WP_APP_PASSWORD=${PASS}" >> "$GITHUB_ENV"
       - name: Run Playwright E2E
         run: npx playwright test
-      - name: (debug) dump WordPress debug.log on 6.9
-        if: always() && matrix.wp == '6.9'
-        run: |
-          echo '--- WPMCP-DIAG lines from debug.log ---'
-          npx wp-env run cli cat wp-content/debug.log 2>/dev/null | grep 'WPMCP-DIAG' | sort -u || echo '(no debug.log / no diag lines)'
       - name: Upload report on failure
         if: failure()
         uses: actions/upload-artifact@v4
