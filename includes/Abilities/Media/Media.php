@@ -225,22 +225,22 @@ class Media {
 
 					// Update attachment metadata.
 					if ( ! empty( $input['title'] ) ) {
-						wp_update_post( array(
+						wp_update_post( wp_slash( array(
 							'ID'         => $attachment_id,
 							'post_title' => sanitize_text_field( $input['title'] ),
-						) );
+						) ) );
 					}
 					if ( ! empty( $input['caption'] ) ) {
-						wp_update_post( array(
+						wp_update_post( wp_slash( array(
 							'ID'           => $attachment_id,
 							'post_excerpt' => sanitize_text_field( $input['caption'] ),
-						) );
+						) ) );
 					}
 					if ( ! empty( $input['description'] ) ) {
-						wp_update_post( array(
+						wp_update_post( wp_slash( array(
 							'ID'           => $attachment_id,
 							'post_content' => sanitize_textarea_field( $input['description'] ),
-						) );
+						) ) );
 					}
 					if ( ! empty( $input['alt_text'] ) ) {
 						update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $input['alt_text'] ) );
@@ -427,7 +427,7 @@ class Media {
 						$post_data['post_content'] = sanitize_textarea_field( $input['description'] );
 					}
 
-					$result = wp_update_post( $post_data, true );
+					$result = wp_update_post( wp_slash( $post_data ), true );
 
 					if ( is_wp_error( $result ) ) {
 						return array( 'success' => false, 'message' => esc_html( $result->get_error_message() ) );

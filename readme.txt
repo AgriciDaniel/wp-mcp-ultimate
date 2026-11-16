@@ -3,7 +3,7 @@ Contributors: agricidaniel
 Tags: mcp, ai, claude, model-context-protocol, automation
 Requires at least: 6.7
 Tested up to: 7.0
-Stable tag: 2.1.0
+Stable tag: 2.1.1
 Requires PHP: 8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
@@ -55,6 +55,9 @@ HTTPS is strongly recommended for production use since API credentials are trans
 Different abilities require different WordPress capabilities. For example, content abilities require `edit_posts`, user abilities require `list_users` or `edit_users`, and system abilities require `manage_options`. See the full abilities reference in docs/ABILITIES.md.
 
 == Changelog ==
+
+= 2.1.1 =
+* Fixed write abilities stripping backslashes from saved content. wp_insert_post(), wp_update_post(), wp_insert_comment(), wp_insert_term() and wp_update_nav_menu_item() expect slashed input and run wp_unslash(); the abilities passed raw values, so every save removed one level of backslashes. In block content this turned escapes such as \u002d and \n in block attributes into literal "u002d" and "n", breaking generated block CSS (e.g. CSS custom properties and custom CSS). Affected: content/create-post, update-post, patch-post, create-page, update-page, patch-page, media/upload, media/update, comments/create, comments/reply, content/create-category, content/create-tag, menus/add-item, menus/update-item.
 
 = 2.1.0 =
 * Fixed tools/list returning an empty array on WordPress 6.9+/7.0 (meta-abilities were registered outside wp_abilities_api_init, which core now rejects)

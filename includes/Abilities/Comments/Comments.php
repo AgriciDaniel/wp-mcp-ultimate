@@ -332,7 +332,7 @@ class Comments {
 						'comment_approved'     => 1,
 					);
 
-					$comment_id = wp_insert_comment( $comment_data );
+					$comment_id = wp_insert_comment( wp_slash( $comment_data ) );
 
 					if ( ! $comment_id ) {
 						return array(
@@ -448,7 +448,7 @@ class Comments {
 						'comment_approved'     => 1,
 					);
 
-					$comment_id = wp_insert_comment( $comment_data );
+					$comment_id = wp_insert_comment( wp_slash( $comment_data ) );
 
 					if ( ! $comment_id ) {
 						return array(

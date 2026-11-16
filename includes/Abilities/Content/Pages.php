@@ -335,7 +335,7 @@ class Pages {
 						$page_data['menu_order'] = (int) $input['menu_order'];
 					}
 
-					$page_id = wp_insert_post( $page_data, true );
+					$page_id = wp_insert_post( wp_slash( $page_data ), true );
 
 					if ( is_wp_error( $page_id ) ) {
 						return array( 'success' => false, 'message' => esc_html( $page_id->get_error_message() ) );
@@ -471,7 +471,7 @@ class Pages {
 						$page_data['menu_order'] = (int) $input['menu_order'];
 					}
 
-					$result = wp_update_post( $page_data, true );
+					$result = wp_update_post( wp_slash( $page_data ), true );
 
 					if ( is_wp_error( $result ) ) {
 						return array( 'success' => false, 'message' => esc_html( $result->get_error_message() ) );
@@ -680,10 +680,10 @@ class Pages {
 						);
 					}
 
-					$result = wp_update_post( array(
+					$result = wp_update_post( wp_slash( array(
 						'ID'           => $input['id'],
 						'post_content' => $new_content,
-					), true );
+					) ), true );
 
 					if ( is_wp_error( $result ) ) {
 						return array( 'success' => false, 'message' => esc_html( $result->get_error_message() ) );

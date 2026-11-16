@@ -141,7 +141,7 @@ class Taxonomy {
 						$args['parent'] = (int) $input['parent'];
 					}
 
-					$result = wp_insert_term( $input['name'], 'category', $args );
+					$result = wp_insert_term( wp_slash( $input['name'] ), 'category', wp_slash( $args ) );
 
 					if ( is_wp_error( $result ) ) {
 						if ( $result->get_error_code() === 'term_exists' ) {
@@ -298,7 +298,7 @@ class Taxonomy {
 						$args['description'] = $input['description'];
 					}
 
-					$result = wp_insert_term( $input['name'], 'post_tag', $args );
+					$result = wp_insert_term( wp_slash( $input['name'] ), 'post_tag', wp_slash( $args ) );
 
 					if ( is_wp_error( $result ) ) {
 						// Check if tag already exists

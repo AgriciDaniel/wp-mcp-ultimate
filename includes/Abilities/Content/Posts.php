@@ -400,7 +400,7 @@ class Posts {
 						$post_data['post_author'] = intval( $input['author_id'] );
 					}
 
-					$post_id = wp_insert_post( $post_data, true );
+					$post_id = wp_insert_post( wp_slash( $post_data ), true );
 
 					if ( is_wp_error( $post_id ) ) {
 						return array( 'success' => false, 'message' => esc_html( $post_id->get_error_message() ) );
@@ -553,7 +553,7 @@ class Posts {
 						$post_data['post_author'] = $author_id;
 					}
 
-					$result = wp_update_post( $post_data, true );
+					$result = wp_update_post( wp_slash( $post_data ), true );
 
 					if ( is_wp_error( $result ) ) {
 						return array( 'success' => false, 'message' => esc_html( $result->get_error_message() ) );
@@ -787,9 +787,11 @@ class Posts {
 					}
 
 					$result = wp_update_post(
-						array(
-							'ID'           => $post->ID,
-							'post_content' => $new_content,
+						wp_slash(
+							array(
+								'ID'           => $post->ID,
+								'post_content' => $new_content,
+							)
 						),
 						true
 					);
