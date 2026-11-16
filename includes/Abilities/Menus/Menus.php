@@ -334,7 +334,7 @@ class Menus {
 						'menu-item-status'    => 'publish',
 					);
 
-					$item_id = wp_update_nav_menu_item( $input['menu_id'], 0, $item_data );
+					$item_id = wp_update_nav_menu_item( $input['menu_id'], 0, wp_slash( $item_data ) );
 
 					if ( is_wp_error( $item_id ) ) {
 						return array( 'success' => false, 'message' => esc_html( $item_id->get_error_message() ) );
@@ -449,7 +449,7 @@ class Menus {
 						$item_data['menu-item-classes'] = $input['classes'];
 					}
 
-					$result = wp_update_nav_menu_item( $input['menu_id'], $input['item_id'], $item_data );
+					$result = wp_update_nav_menu_item( $input['menu_id'], $input['item_id'], wp_slash( $item_data ) );
 
 					if ( is_wp_error( $result ) ) {
 						return array( 'success' => false, 'message' => esc_html( $result->get_error_message() ) );
